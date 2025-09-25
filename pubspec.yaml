@@ -1,4 +1,4 @@
-name: finflowa
+name: rupee_diary
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -46,6 +46,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  change_app_package_name: ^1.5.0
 
 flutter_launcher_icons:
   android: true

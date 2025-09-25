@@ -1,6 +1,6 @@
-import 'utility/appbar.dart';
+import '../utility/appbar.dart';
 import 'package:flutter/material.dart';
-import 'utility/constant.dart';
+import '../utility/constant.dart';
 
 class HomeScreen extends StatelessWidget {
   static const String id = '/home';
@@ -11,19 +11,14 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: Appbar(title: 'Welcome', isBackButton: true,),
+      appBar: Appbar(title: 'Welcome User'),
       body: Align(
         alignment: Alignment.center,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            kBox,
-            Image(image: AssetImage('assets/images/logo.png')),
-            Text(
-              'Welcome to Finflowa',
-              style: textTheme.bodyMedium,
-            ),
-            kBox,
+            khBox,
+            
           ],
         ),
       ),

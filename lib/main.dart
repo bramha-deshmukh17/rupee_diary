@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'home.dart';
+import 'home/home.dart';
 import 'utility/constant.dart';
-import 'utility/splash.dart';
+import 'home/splash.dart';
 
 void main() {
   runApp(const MyApp());

@@ -12,7 +12,9 @@ const Color kBlue = Colors.blue;
 const Color kGreen = Colors.green;
 const Color kGrey = Colors.grey;
 
-const kBox = SizedBox(height: 15.0);
+const khBox = SizedBox(height: 15.0);
+const kwBox = SizedBox(width: 15.0);
+const kBox = SizedBox(height: 15.0, width: 15.0,);
 
 // app bar back icon
 const Icon kBackArrow = Icon(

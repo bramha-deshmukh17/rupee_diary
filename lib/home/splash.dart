@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'constant.dart';
+import '../utility/constant.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -19,21 +19,22 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final textTheme = Theme.of(context).textTheme;
+    return Scaffold(
       backgroundColor: Colors.white, // Customize background color
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image(
+            const Image(
               height: 300,
               width: 350,
               image: AssetImage('assets/images/logo.png'),
             ), // Splash logo
+            khBox,
+            const CircularProgressIndicator(color: kSecondaryColor), // Loader
             kBox,
-            CircularProgressIndicator(color: kSecondaryColor), // Loader
-            kBox,
-            Text('Loading...', style: TextStyle(color: kGrey)),
+            Text('Loading...', style: textTheme.bodyLarge!.copyWith(color: kPrimaryColor)),
           ],
         ),
       ),
