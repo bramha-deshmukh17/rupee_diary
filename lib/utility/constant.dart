@@ -19,6 +19,5 @@ const kBox = SizedBox(height: 15.0, width: 15.0,);
 // app bar back icon
 const Icon kBackArrow = Icon(
   FontAwesomeIcons.arrowLeft,
-  color: kWhite,
   size: 20.0,
 );

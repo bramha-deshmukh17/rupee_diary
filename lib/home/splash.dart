@@ -21,7 +21,6 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: Colors.white, // Customize background color
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

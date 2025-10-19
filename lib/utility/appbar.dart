@@ -1,48 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../notification/notification.dart';
+import '../settings/settings.dart';
 import './constant.dart';
+
 
 class Appbar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool isBackButton;
+  final bool isHomePage;
 
-  const Appbar({required this.title, this.isBackButton = false});
-
-  @override
+  const Appbar({
+    required this.title,
+    this.isBackButton = false,
+    this.isHomePage = false,
+    super.key,
+  });
+@override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    
     return AppBar(
-      backgroundColor: kPrimaryColor,
+      elevation: 0,
       leading:
-          isBackButton
-              ? IconButton(
-                icon: kBackArrow,
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              )
-              : const SizedBox(width: 5.0),
-      title: Text(title, style: textTheme.displayLarge),
-      actions: [
-        IconButton(
-          icon: Icon(FontAwesomeIcons.solidBell, color: kWhite, size: 20.0),
-          onPressed: () {
-            print("reminder button");
-          },
-        ),
+          isHomePage
+              ? null
+              : (isBackButton
+                  ? IconButton(
+                      icon: kBackArrow,
+                      onPressed: () => Navigator.pop(context),
+                    )
+                  : null),
 
-        kwBox,
+      title: Text(title, style: textTheme.headlineMedium),
+      centerTitle: !isHomePage,
 
-        IconButton(
-          icon: Icon(FontAwesomeIcons.optinMonster, color: kWhite, size: 20.0),
-          onPressed: () {
-            print("settings button");
-          },
-        ),
-      ],
+      actions:
+          isHomePage
+              ? [
+                IconButton(
+                  icon: Icon(FontAwesomeIcons.solidBell, size: 20.0),
+                  onPressed: () {
+                    Navigator.pushNamed(context, NotificationCenterScreen.id);
+                  },
+                ),
+                IconButton(
+                  icon: Icon(FontAwesomeIcons.gear, size: 20.0),
+                  onPressed: () {
+                    Navigator.pushNamed(context, SettingsScreen.id);
+                  },
+                ),
+                kwBox,
+              ]
+              : [],
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(50.0);
+  Size get preferredSize => const Size.fromHeight(60.0);
 }
+
