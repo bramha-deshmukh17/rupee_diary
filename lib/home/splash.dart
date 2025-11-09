@@ -25,11 +25,17 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Image(
+            SizedBox(
+              width: 300,
               height: 300,
-              width: 350,
-              image: AssetImage('assets/images/logo.png'),
-            ), // Splash logo
+              child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.cover,
+              ),
+              ),
+            ),
             khBox,
             const CircularProgressIndicator(color: kSecondaryColor), // Loader
             kBox,
