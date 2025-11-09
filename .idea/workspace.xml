@@ -5,11 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8c336f91-903b-4953-ace7-32a40197f63d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/android/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/android/settings.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/db/database_helper.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/db/database_helper.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/home/home.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/home/home.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/main.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/notification/notification.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/notification/notification.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/services/reminder_notification.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/reminder_notification.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/settings/bill_reminder.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/settings/bill_reminder.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/settings/settings.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/settings/settings.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/utility/appbar.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/utility/appbar.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/utility/constant.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/utility/constant.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -36,21 +39,21 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "bramha-deshmukh17"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;bramha-deshmukh17&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/bramha-deshmukh17/rupee_diary.git",
-    "accountId": "26dc3e3e-1274-457b-a62b-885c78058ff2"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/bramha-deshmukh17/rupee_diary.git&quot;,
+    &quot;accountId&quot;: &quot;26dc3e3e-1274-457b-a62b-885c78058ff2&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 8
-}]]></component>
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
   <component name="ProjectId" id="33M4Tk6IicQezZZTu92cNmDskjK" />
   <component name="ProjectView">
     <navigator currentView="ProjectPane" proportions="" version="1" />
@@ -66,6 +69,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Flutter.main.dart.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
@@ -73,6 +77,7 @@
     "cidr.known.project.marker": "true",
     "dart.analysis.tool.window.visible": "false",
     "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "E:/Live/rupeediary",
     "show.migrate.to.gradle.popup": "false"

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
 import '../services/reminder_notification.dart';
@@ -17,6 +18,17 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   List<BillReminderModel> _items = [];
   bool _isLoading = true;
 
+  static const Map<String, IconData> _categoryIcons = {
+    'Utilities': FontAwesomeIcons.receipt,
+    'Rent/Mortgage': FontAwesomeIcons.house,
+    'Insurance': FontAwesomeIcons.shieldHalved,
+    'Phone/Internet': FontAwesomeIcons.wifi,
+    'Subscription': FontAwesomeIcons.repeat,
+    'Loan Payment': FontAwesomeIcons.landmark,
+    'Credit Card': FontAwesomeIcons.creditCard,
+    'Other': FontAwesomeIcons.shapes,
+  };
+
   @override
   void initState() {
     super.initState();
@@ -26,50 +38,54 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   Future<void> _loadPendingNotifications() async {
     setState(() => _isLoading = true);
 
-    final pendingIds =
-        await ReminderNotificationService.getPendingNotificationIds();
-    debugPrint('NotificationCenter: pendingIds=$pendingIds');
+    try {
+      final remindersData = await DatabaseHelper().getBillReminders();
+      debugPrint(
+        'NotificationCenter: total reminders in DB=${remindersData.length}',
+      );
 
-    final remindersData = await DatabaseHelper().getBillReminders();
-    debugPrint(
-      'NotificationCenter: total reminders in DB=${remindersData.length}',
-    );
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
 
-    final now = DateTime.now();
+      final reminders =
+          remindersData.map((m) => BillReminderModel.fromMap(m)).where((r) {
+              if (r.isPaid) return false;
+              final due = DateTime(
+                r.dueDate.year,
+                r.dueDate.month,
+                r.dueDate.day,
+              );
+              final daysDiff = due.difference(today).inDays;
+              // Only today or tomorrow
+              return daysDiff == 0 || daysDiff == 1;
+            }).toList()
+            ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
-    final reminders =
-        remindersData.map((m) => BillReminderModel.fromMap(m)).where((r) {
-          if (r.isPaid) return false;
-          final dayBeforeId = r.id! * 10;
-          final todayId = r.id! * 10 + 1;
-          final daysDiff = r.dueDate.difference(now).inDays;
-
-          final hasPendingNotification =
-              pendingIds.contains(dayBeforeId) || pendingIds.contains(todayId);
-          final dueSoonOrToday = daysDiff == 0 || daysDiff == 1;
-          final overdue = daysDiff < 0;
-
-          // Include reminders that have pending/active notifications, or are due today/tomorrow, or are overdue
-          return hasPendingNotification || dueSoonOrToday || overdue;
-        }).toList();
-
-    debugPrint('NotificationCenter: reminders to show=${reminders.length}');
-
-    setState(() {
-      _items = reminders;
-      _isLoading = false;
-    });
+      setState(() {
+        _items = reminders;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('NotificationCenter: error loading notifications: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _markAsPaid(BillReminderModel r) async {
     await DatabaseHelper().markBillAsPaid(r.id!, true);
-    await ReminderNotificationService.cancelReminderNotifications(r.id!);
+    if (r.isRecurring) {
+      // Advance recurring reminder automatically and reschedule notifications
+      await ReminderNotificationService.advanceRecurringAndReschedule(r);
+    } else {
+      // Cancel any scheduled notifications for non-recurring reminders
+      await ReminderNotificationService.cancelReminderNotifications(r.id!);
+    }
     await _loadPendingNotifications();
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final textTheme = TextTheme.of(context);
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator(color: kPrimaryColor)),
@@ -83,7 +99,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
               ? Center(
                 child: Text(
                   'No pending notifications',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: textTheme.headlineMedium,
                 ),
               )
               : ListView.builder(
@@ -94,21 +110,49 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: ListTile(
-                      title: Text(r.title),
-                      subtitle: Text(
-                        'Due: ${r.dueDate.toLocal().toIso8601String().split('T')[0]} • ₹${r.amount.toStringAsFixed(2)}',
+                      title: Row(
+                        children: [
+                          Icon(
+                            _categoryIcons[r.category] ??
+                                FontAwesomeIcons.shapes,
+                            size: 20,
+                            color: kPrimaryColor,
+                          ),
+                          kwBox,
+                          Expanded(
+                            child: Text(
+                              r.title,
+                              style: textTheme.bodyLarge,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Due: ${r.dueDate.toLocal().toIso8601String().split('T')[0]}',
+                            style: textTheme.bodyMedium?.copyWith(color: kRed),
+                          ),
+                          Text('₹${r.amount.toStringAsFixed(2)}'),
+                        ],
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () => _markAsPaid(r),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: kPrimaryColor,
                             ),
-                            child: const Text('Mark as Paid'),
+                            child: Text(
+                              'Mark as Paid',
+                              style: textTheme.bodyLarge?.copyWith(
+                                color: kWhite,
+                              ),
+                            ),
                           ),
                         ],
                       ),

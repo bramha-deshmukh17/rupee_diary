@@ -60,7 +60,7 @@ class DatabaseHelper {
     ''');
   }
 
-  // FUNCTION TO UPDATE SETTINGS 
+  // FUNCTION TO UPDATE SETTINGS
   Future<int> updateSetting(String key, String value) async {
     final db = await database;
     return await db.update(
@@ -119,6 +119,20 @@ class DatabaseHelper {
       'bill_reminders',
       {
         'is_paid': isPaid ? 1 : 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> advanceRecurringReminder(int id, DateTime nextDue) async {
+    final db = await database;
+    return await db.update(
+      'bill_reminders',
+      {
+        'due_date': nextDue.toIso8601String(),
+        'is_paid': 0,
         'updated_at': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',

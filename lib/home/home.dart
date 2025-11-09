@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rupee_diary/utility/constant.dart';
+import '../services/route_observer.dart';
 import '../utility/appbar.dart';
 import '../services/reminder_notification.dart';
 import 'balance_card.dart';
@@ -13,20 +14,50 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware  {
+  int _badgeCount = 0;
+  bool _alive = true;
+
   @override
   void initState() {
     super.initState();
-    // Check for due notifications when home screen loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ReminderNotificationService.checkAndShowDueNotifications();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ReminderNotificationService.getTodayTomorrowPendingCount();
+      _refreshBadge();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      routeObserver.subscribe(this, route); // no cast
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this); // no cast
+    _alive = false;
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    _refreshBadge(); // refresh when returning to Home
+  }
+
+  Future<void> _refreshBadge() async {
+    final c = await ReminderNotificationService.getTodayTomorrowPendingCount();
+    if (!mounted) return;
+    setState(() => _badgeCount = c);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const Appbar(title: "Name", isHomePage: true),
+      appBar: Appbar(title: "Name", isHomePage: true, badgeCount: _badgeCount),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

@@ -40,10 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _isLoading = false;
     });
     // Apply the saved theme setting
-    Provider.of<ThemeProvider>(
-      context,
-      listen: true,
-    ).toggleTheme(settings['theme'] == 'enabled');
+   context.read<ThemeProvider>().toggleTheme(settings['theme'] == 'enabled');
   }
 
   // Function to handle toggling a setting
@@ -162,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 30),
           Center(
             child: Text(
-              "Version 1.1.0",
+              "Version 1.1.1",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
           ),
@@ -179,15 +176,14 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-        ),
+        style: TextTheme.of(
+          context,
+        ).bodyMedium?.copyWith(color: Colors.grey[600]),
       ),
     );
   }
@@ -223,7 +219,7 @@ class SettingsTile extends StatelessWidget {
         ),
         title: Text(
           title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          style: TextTheme.of(context).bodyLarge,
         ),
         trailing: trailing,
         onTap: onTap,

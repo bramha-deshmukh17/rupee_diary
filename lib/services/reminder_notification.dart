@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart';
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
 
@@ -9,8 +10,16 @@ class ReminderNotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  static const MethodChannel _tzChannel = MethodChannel('app/timezone');
+
+  // Initialize notifications, timezone, and permissions
   static Future<void> initialize() async {
     tz.initializeTimeZones();
+    try {
+      final localTz =
+          await _tzChannel.invokeMethod<String>('getLocalTimezone') ?? 'UTC';
+      tz.setLocalLocation(tz.getLocation(localTz));
+    } catch (_) {}
 
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -34,121 +43,154 @@ class ReminderNotificationService {
     );
 
     await _requestPermissions();
+    await _migratePastRecurringReminders();
   }
 
   static Future<void> _requestPermissions() async {
-    await Permission.notification.isDenied.then((value) {
-      if (value) {
-        Permission.notification.request();
+    try {
+      if (await Permission.notification.isDenied) {
+        await Permission.notification.request();
       }
-    });
+    } catch (_) {}
+    try {
+      if (await Permission.scheduleExactAlarm.isDenied) {
+        await Permission.scheduleExactAlarm.request();
+      }
+    } catch (_) {}
+  }
 
-    // Request exact alarm permission for Android 12+
-    if (await Permission.scheduleExactAlarm.isDenied) {
-      await Permission.scheduleExactAlarm.request();
+//handle Dismiss and Mark as Paid
+  static void _onNotificationTap(NotificationResponse response) async {
+    final payload = response.payload ?? '';
+    final id = _parseReminderId(payload);
+    if (id == null) return;
+
+    if (response.actionId == 'mark_paid') {
+      await DatabaseHelper().markBillAsPaid(id, true);
+
+      // Load the reminder to know if it is recurring
+      final all = await DatabaseHelper().getBillReminders();
+      final map = all.cast<Map<String, dynamic>?>().firstWhere(
+        (m) => m?['id'] == id,
+        orElse: () => null,
+      );
+      if (map != null) {
+        final r = BillReminderModel.fromMap(map);
+        if (r.isRecurring) {
+          await advanceRecurringAndReschedule(r);
+        } else {
+          await cancelReminderNotifications(id);
+        }
+      }
+    } else if (response.actionId == 'dismiss') {
+      final isToday = payload.endsWith('_today');
+      final notifId = id * 10 + (isToday ? 1 : 0);
+      await _notificationsPlugin.cancel(notifId);
     }
   }
 
-  static void _onNotificationTap(NotificationResponse notificationResponse) {
-    final payload = notificationResponse.payload;
-    if (payload != null) {
-      // Handle notification tap - you can navigate to bill details
-      print('Notification tapped with payload: $payload');
+  static int? _parseReminderId(String payload) {
+    final parts = payload.split('_');
+    if (parts.length >= 3 && parts[0] == 'reminder') {
+      return int.tryParse(parts[1]);
     }
+    return null;
   }
 
+//schedule notifications for a reminder.
+// - For recurring monthly reminders we create a recurring due-date notification (monthly at 00:00).
+// - If dueDay > 1, we also create a recurring "day-before" notification at 00:00 on (dueDay - 1).
+// - Non-recurring reminders are scheduled as one-off notifications.
   static Future<void> scheduleReminderNotifications(
     BillReminderModel reminder,
   ) async {
     final settings = await DatabaseHelper().getSettings();
-    final notificationsEnabled = settings['notifications'] == 'enabled';
+    if (settings['notifications'] != 'enabled') return;
 
-    if (!notificationsEnabled) return;
+    await cancelReminderNotifications(reminder.id!);
 
     final now = DateTime.now();
-    // Normalize reminder date to date-only
-    final dueDate = DateTime(
-      reminder.dueDate.year,
-      reminder.dueDate.month,
-      reminder.dueDate.day,
-    );
-    final dayBeforeDate = dueDate.subtract(const Duration(days: 1));
+    final dueDate = DateTime(reminder.dueDate.year, reminder.dueDate.month, reminder.dueDate.day);
+    final dayBefore = dueDate.subtract(const Duration(days: 1));
 
-    // Schedule at 9:00 local time for both notifications
-    final scheduledDayBefore = DateTime(
-      dayBeforeDate.year,
-      dayBeforeDate.month,
-      dayBeforeDate.day,
-      9,
-    );
-    final scheduledDueDate = DateTime(
-      dueDate.year,
-      dueDate.month,
-      dueDate.day,
-      9,
-    );
+    final scheduledDue = DateTime(dueDate.year, dueDate.month, dueDate.day, 0, 0);
+    final scheduledBefore = DateTime(dayBefore.year, dayBefore.month, dayBefore.day, 0, 0);
 
-    if (scheduledDayBefore.isAfter(now)) {
-      await _scheduleNotification(
-        id: reminder.id! * 10,
-        title: '📋 Bill Due Tomorrow',
-        body:
-            '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
-        scheduledDate: scheduledDayBefore,
-        payload: 'reminder_${reminder.id}_tomorrow',
-        isHighPriority: true,
-      );
-    }
-
-    if (scheduledDueDate.isAfter(now)) {
+    if (reminder.isRecurring) {
       await _scheduleNotification(
         id: reminder.id! * 10 + 1,
         title: '⚠️ Bill Due Today',
-        body:
-            '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
-        scheduledDate: scheduledDueDate,
+        body: '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
+        scheduledDate: scheduledDue,
         payload: 'reminder_${reminder.id}_today',
-        isHighPriority: true,
+        isRecurringMonthly: true,
+        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
       );
+
+      if (dueDate.day > 1) {
+        await _scheduleNotification(
+          id: reminder.id! * 10,
+          title: '📋 Bill Due Tomorrow',
+          body: '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
+          scheduledDate: scheduledBefore,
+          payload: 'reminder_${reminder.id}_tomorrow',
+          isRecurringMonthly: true,
+          matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+        );
+      }
+    } else {
+      if (scheduledBefore.isAfter(now)) {
+        await _scheduleNotification(
+          id: reminder.id! * 10,
+          title: '📋 Bill Due Tomorrow',
+          body: '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
+          scheduledDate: scheduledBefore,
+          payload: 'reminder_${reminder.id}_tomorrow',
+        );
+      }
+      if (scheduledDue.isAfter(now)) {
+        await _scheduleNotification(
+          id: reminder.id! * 10 + 1,
+          title: '⚠️ Bill Due Today',
+          body: '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
+          scheduledDate: scheduledDue,
+          payload: 'reminder_${reminder.id}_today',
+        );
+      }
     }
   }
 
+// Internal helper: schedule a notification (zonedSchedule). If isRecurringMonthly is true
+// and a matchDateTimeComponents is provided, the notification will repeat monthly.
   static Future<void> _scheduleNotification({
     required int id,
     required String title,
     required String body,
     required DateTime scheduledDate,
     String? payload,
-    bool isHighPriority = false,
+    bool isRecurringMonthly = false,
+    DateTimeComponents? matchDateTimeComponents,
   }) async {
     final androidDetails = AndroidNotificationDetails(
       'bill_reminders',
       'Bill Reminders',
       channelDescription: 'Notifications for upcoming bill payments',
-      importance: isHighPriority ? Importance.max : Importance.high,
-      priority: isHighPriority ? Priority.max : Priority.high,
-      ongoing: isHighPriority, // Makes notification non-dismissible
-      autoCancel: !isHighPriority, // Prevents auto-dismiss for high priority
-      showWhen: true,
-      when: scheduledDate.millisecondsSinceEpoch,
-      actions:
-          isHighPriority
-              ? [
-                const AndroidNotificationAction(
-                  'dismiss',
-                  'Dismiss',
-                  cancelNotification: true,
-                ),
-                const AndroidNotificationAction(
-                  'mark_paid',
-                  'Mark as Paid',
-                  cancelNotification: true,
-                ),
-              ]
-              : null,
+      importance: Importance.max,
+      priority: Priority.max,
+      autoCancel: true,
+      actions: [
+        const AndroidNotificationAction('dismiss', 'Dismiss', cancelNotification: true),
+        const AndroidNotificationAction('mark_paid', 'Mark as Paid', cancelNotification: true),
+      ],
     );
 
-    final notificationDetails = NotificationDetails(android: androidDetails);
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final notificationDetails = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     await _notificationsPlugin.zonedSchedule(
       id,
@@ -158,145 +200,87 @@ class ReminderNotificationService {
       notificationDetails,
       payload: payload,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: isRecurringMonthly ? matchDateTimeComponents : null,
     );
   }
 
   static Future<void> cancelReminderNotifications(int reminderId) async {
-    // Cancel both notifications (day before and due date)
     await _notificationsPlugin.cancel(reminderId * 10);
     await _notificationsPlugin.cancel(reminderId * 10 + 1);
   }
 
-  static Future<void> showImmediateNotification({
-    required int id,
-    required String title,
-    required String body,
-    String? payload,
-    bool isHighPriority = false,
-  }) async {
-    final androidDetails = AndroidNotificationDetails(
-      'bill_reminders',
-      'Bill Reminders',
-      channelDescription: 'Notifications for upcoming bill payments',
-      importance: isHighPriority ? Importance.max : Importance.high,
-      priority: isHighPriority ? Priority.max : Priority.high,
-      ongoing: isHighPriority,
-      autoCancel: !isHighPriority,
-      actions:
-          isHighPriority
-              ? [
-                const AndroidNotificationAction(
-                  'dismiss',
-                  'Dismiss',
-                  cancelNotification: true,
-                ),
-                const AndroidNotificationAction(
-                  'mark_paid',
-                  'Mark as Paid',
-                  cancelNotification: true,
-                ),
-              ]
-              : null,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      interruptionLevel: InterruptionLevel.timeSensitive,
-    );
-
-    final notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await _notificationsPlugin.show(
-      id,
-      title,
-      body,
-      notificationDetails,
-      payload: payload,
-    );
-  }
-
-  static Future<void> dismissNotification(int id) async {
-    await _notificationsPlugin.cancel(id);
-  }
-
-  static Future<void> checkAndShowDueNotifications() async {
-    final settings = await DatabaseHelper().getSettings();
-    final notificationsEnabled = settings['notifications'] == 'enabled';
-    if (!notificationsEnabled) return;
-
+// Called by initialize() to move any recurring reminders that are in the past
+// forward until their dueDate is >= today. This prevents recurring reminders
+// from remaining stuck in the past.
+  static Future<void> _migratePastRecurringReminders() async {
     final reminders = await DatabaseHelper().getBillReminders();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    for (final reminderMap in reminders) {
-      final reminder = BillReminderModel.fromMap(reminderMap);
-      if (reminder.isPaid) continue;
+    for (final map in reminders) {
+      final r = BillReminderModel.fromMap(map);
+      if (!r.isRecurring) continue;
 
-      final dueDate = DateTime(
-        reminder.dueDate.year,
-        reminder.dueDate.month,
-        reminder.dueDate.day,
-      );
-      final daysDifference = dueDate.difference(today).inDays;
+      DateTime due = DateTime(r.dueDate.year, r.dueDate.month, r.dueDate.day);
+      bool advanced = false;
+      while (due.isBefore(today)) {
+        due = _addMonthsSafe(due, 1);
+        advanced = true;
+      }
 
-      if (daysDifference == 1) {
-        await showImmediateNotification(
-          id: reminder.id! * 10,
-          title: '📋 Bill Due Tomorrow',
-          body:
-              '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
-          payload: 'reminder_${reminder.id}_tomorrow',
-          isHighPriority: true,
-        );
-      } else if (daysDifference == 0) {
-        await showImmediateNotification(
-          id: reminder.id! * 10 + 1,
-          title: '⚠️ Bill Due Today',
-          body:
-              '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
-          payload: 'reminder_${reminder.id}_today',
-          isHighPriority: true,
-        );
+      if (advanced) {
+        await DatabaseHelper().advanceRecurringReminder(r.id!, due);
+        final updated = r.copyWith(dueDate: due, isPaid: false);
+        await cancelReminderNotifications(r.id!);
+        await scheduleReminderNotifications(updated);
+      } else {
+        await scheduleReminderNotifications(r);
       }
     }
   }
 
-  static Future<Set<int>> getPendingNotificationIds() async {
-    final ids = <int>{};
+// Safely add months handling month-end rollover
+  static DateTime _addMonthsSafe(DateTime base, int months) {
+    final y = base.year;
+    final m = base.month + months;
+    final targetYear = y + ((m - 1) ~/ 12);
+    final targetMonth = ((m - 1) % 12) + 1;
+    final lastDay = DateTime(targetYear, targetMonth + 1, 0).day;
+    final day = base.day.clamp(1, lastDay);
+    return DateTime(targetYear, targetMonth, day);
+  }
 
-    try {
-      final pending = await _notificationsPlugin.pendingNotificationRequests();
-      for (final p in pending) {
-        ids.add(p.id);
-      }
-    } catch (e) {
-      // ignore
+// Called when a reminder is marked as paid: advance to next occurrence and reschedule
+  static Future<void> advanceRecurringAndReschedule(
+    BillReminderModel reminder,
+  ) async {
+    final next = _addMonthsSafe(reminder.dueDate, 1);
+    await DatabaseHelper().advanceRecurringReminder(reminder.id!, next);
+    final advanced = reminder.copyWith(dueDate: next, isPaid: false);
+    await cancelReminderNotifications(reminder.id!);
+    await scheduleReminderNotifications(advanced);
+  }
+
+  // Used for showing badge count (today/tomorrow)
+  static Future<int> getTodayTomorrowPendingCount() async {
+    final settings = await DatabaseHelper().getSettings();
+    if (settings['notifications'] != 'enabled') return 0;
+
+    final data = await DatabaseHelper().getBillReminders();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    int count = 0;
+
+    for (final m in data) {
+      final r = BillReminderModel.fromMap(m);
+      if (r.isPaid) continue;
+
+      final due = DateTime(r.dueDate.year, r.dueDate.month, r.dueDate.day);
+      final diff = due.difference(today).inDays;
+
+      if (diff == 0 || diff == 1) count++;
     }
-
-    // On Android, also include currently active (displayed) notifications
-    try {
-      final androidImpl =
-          _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >();
-      if (androidImpl != null) {
-        final active = await androidImpl.getActiveNotifications();
-        for (final a in active) {
-          if (a.id != null) ids.add(a.id!);
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-
-    return ids;
+    return count;
   }
 }

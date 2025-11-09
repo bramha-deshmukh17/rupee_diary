@@ -7,7 +7,8 @@ import './settings/settings.dart';
 import './utility/constant.dart';
 import './home/splash.dart';
 import './services/reminder_notification.dart';
-import 'notification/notification.dart';
+import '/notification/notification.dart';
+import '/services/route_observer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+       navigatorObservers: [routeObserver],
 
       // 1. Your existing light theme
       theme: ThemeData(
@@ -96,14 +98,14 @@ TextTheme poppinsTextTheme(Brightness brightness) {
       .copyWith(
         displayLarge: textTheme.displayLarge?.copyWith(
           fontWeight: FontWeight.w800,
-          fontSize: 36,
+          fontSize: 30,
           letterSpacing: 0,
           color: brightness == Brightness.dark ? kWhite : kBlack,
         ),
 
         headlineMedium: textTheme.headlineMedium?.copyWith(
           fontWeight: FontWeight.w700,
-          fontSize: 28,
+          fontSize: 24,
           letterSpacing: 0,
           color: brightness == Brightness.dark ? kWhite : kBlack,
         ),
