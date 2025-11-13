@@ -33,14 +33,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Function to load settings from the database into the local state
   Future<void> _loadSettings() async {
-    final settings = await DatabaseHelper().getSettings();
+    final settings = await DatabaseHelper.instance.getSettings();
     if (!mounted) return;
     setState(() {
       _settings = settings;
       _isLoading = false;
     });
     // Apply the saved theme setting
-   context.read<ThemeProvider>().toggleTheme(settings['theme'] == 'enabled');
+    context.read<ThemeProvider>().toggleTheme(settings['theme'] == 'enabled');
   }
 
   // Function to handle toggling a setting
@@ -55,12 +55,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     // Update the value in the database
-    await DatabaseHelper().updateSetting(key, newValue);
+    await DatabaseHelper.instance.updateSetting(key, newValue);
 
     // If notifications setting changed, schedule or cancel notifications for existing reminders
     if (key == 'notifications') {
       try {
-        final remindersData = await DatabaseHelper().getBillReminders();
+        final remindersData = await DatabaseHelper.instance.getBillReminders();
         if (isEnabled) {
           for (final map in remindersData) {
             final reminder = BillReminderModel.fromMap(map);
@@ -176,7 +176,6 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Text(
@@ -217,10 +216,7 @@ class SettingsTile extends StatelessWidget {
           backgroundColor: iconColor.withOpacity(0.1),
           child: Icon(icon, color: iconColor, size: 18),
         ),
-        title: Text(
-          title,
-          style: TextTheme.of(context).bodyLarge,
-        ),
+        title: Text(title, style: TextTheme.of(context).bodyLarge),
         trailing: trailing,
         onTap: onTap,
       ),

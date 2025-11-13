@@ -16,7 +16,7 @@ void main() async {
   // Initialize notifications
   await ReminderNotificationService.initialize();
 
-  final settings = await DatabaseHelper().getSettings();
+  final settings = await DatabaseHelper.instance.getSettings();
   final isDark = settings['theme'] == 'enabled';
 
   runApp(
@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-       navigatorObservers: [routeObserver],
+      navigatorObservers: [routeObserver],
 
       // 1. Your existing light theme
       theme: ThemeData(
@@ -67,7 +67,8 @@ class MyApp extends StatelessWidget {
         HomeScreen.id: (context) => HomeScreen(),
         SettingsScreen.id: (context) => SettingsScreen(),
         BillReminder.id: (context) => BillReminder(),
-        NotificationCenterScreen.id: (context) => const NotificationCenterScreen(),
+        NotificationCenterScreen.id:
+            (context) => const NotificationCenterScreen(),
       },
       initialRoute: '/',
     );

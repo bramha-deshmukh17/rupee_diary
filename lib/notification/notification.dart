@@ -39,7 +39,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final remindersData = await DatabaseHelper().getBillReminders();
+      final remindersData = await DatabaseHelper.instance.getBillReminders();
       debugPrint(
         'NotificationCenter: total reminders in DB=${remindersData.length}',
       );
@@ -72,7 +72,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   Future<void> _markAsPaid(BillReminderModel r) async {
-    await DatabaseHelper().markBillAsPaid(r.id!, true);
+    await DatabaseHelper.instance.markBillAsPaid(r.id!, true);
     if (r.isRecurring) {
       // Advance recurring reminder automatically and reschedule notifications
       await ReminderNotificationService.advanceRecurringAndReschedule(r);

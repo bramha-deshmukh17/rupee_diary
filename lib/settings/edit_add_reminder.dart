@@ -229,7 +229,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
 
       int reminderId;
       if (widget.reminder == null) {
-        reminderId = await DatabaseHelper().insertBillReminder(
+        reminderId = await DatabaseHelper.instance.insertBillReminder(
           reminder.toMap(),
         );
         final newReminder = reminder.copyWith(id: reminderId);
@@ -238,7 +238,10 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
         );
       } else {
         reminderId = widget.reminder!.id!;
-        await DatabaseHelper().updateBillReminder(reminderId, reminder.toMap());
+        await DatabaseHelper.instance.updateBillReminder(
+          reminderId,
+          reminder.toMap(),
+        );
         await ReminderNotificationService.cancelReminderNotifications(
           reminderId,
         );

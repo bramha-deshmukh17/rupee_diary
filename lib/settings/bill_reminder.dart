@@ -20,7 +20,6 @@ class _BillReminderState extends State<BillReminder> {
   List<BillReminderModel> _reminders = [];
   bool _isLoading = true;
 
-
   @override
   void initState() {
     super.initState();
@@ -28,7 +27,7 @@ class _BillReminderState extends State<BillReminder> {
   }
 
   Future<void> _loadReminders() async {
-    final reminders = await DatabaseHelper().getBillReminders();
+    final reminders = await DatabaseHelper.instance.getBillReminders();
     setState(() {
       _reminders = reminders.map((r) => BillReminderModel.fromMap(r)).toList();
       _isLoading = false;
@@ -38,7 +37,7 @@ class _BillReminderState extends State<BillReminder> {
   Future<void> _deleteReminder(BillReminderModel reminder) async {
     // Cancel notifications before deleting
     await ReminderNotificationService.cancelReminderNotifications(reminder.id!);
-    await DatabaseHelper().deleteBillReminder(reminder.id!);
+    await DatabaseHelper.instance.deleteBillReminder(reminder.id!);
     _loadReminders();
   }
 

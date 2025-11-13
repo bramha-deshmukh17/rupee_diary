@@ -2,32 +2,32 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
-  // Create a singleton instance
-  static final DatabaseHelper _instance = DatabaseHelper._internal();
-  factory DatabaseHelper() => _instance;
-  DatabaseHelper._internal();
+  // 🔥 Singleton instance (recommended pattern)
+  DatabaseHelper._privateConstructor();
+  static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
 
   static Database? _database;
 
-  // Getter for the database
+  // Public getter for the database
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDb();
+    _database = await _initDatabase();
     return _database!;
   }
 
-  // Initialize the database
-  Future<Database> _initDb() async {
+  // Initialize database
+  Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'ruppediary.db'); // Database file name
+    final path = join(dbPath, 'ruppediary.db');
+
     return await openDatabase(
       path,
       version: 1,
-      onCreate: _onCreate, // This function runs when the DB is first created
+      onCreate: _onCreate,
     );
   }
 
-  // Create the database table
+  // Create tables and insert initial settings
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       create table settings(
@@ -38,9 +38,9 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
-        insert into settings (settings_key, settings_value) values
-        ('notifications', 'disabled'),
-        ('theme', 'disabled');
+      insert into settings (settings_key, settings_value) values
+      ('notifications', 'disabled'),
+      ('theme', 'disabled');
     ''');
 
     await db.execute('''
@@ -60,7 +60,7 @@ class DatabaseHelper {
     ''');
   }
 
-  // FUNCTION TO UPDATE SETTINGS
+  // UPDATE A SETTING
   Future<int> updateSetting(String key, String value) async {
     final db = await database;
     return await db.update(
@@ -71,35 +71,40 @@ class DatabaseHelper {
     );
   }
 
-  // FUNCTION TO GET ALL SETTINGS AS A MAP
+  // GET ALL SETTINGS AS A MAP
   Future<Map<String, String>> getSettings() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('settings');
+
     if (maps.isEmpty) return {};
 
-    // Convert the List<Map> into a single Map<String, String>
     return Map.fromEntries(
       maps.map((map) => MapEntry(map['settings_key'], map['settings_value'])),
     );
   }
 
-  // BILL REMINDER FUNCTIONS
+  // ADD A BILL REMINDER
   Future<int> insertBillReminder(Map<String, dynamic> reminder) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
+
     reminder['created_at'] = now;
     reminder['updated_at'] = now;
+
     return await db.insert('bill_reminders', reminder);
   }
 
+  // GET ALL BILL REMINDERS
   Future<List<Map<String, dynamic>>> getBillReminders() async {
     final db = await database;
     return await db.query('bill_reminders', orderBy: 'due_date ASC');
   }
 
+  // UPDATE A BILL REMINDER
   Future<int> updateBillReminder(int id, Map<String, dynamic> reminder) async {
     final db = await database;
     reminder['updated_at'] = DateTime.now().toIso8601String();
+
     return await db.update(
       'bill_reminders',
       reminder,
@@ -108,13 +113,16 @@ class DatabaseHelper {
     );
   }
 
+  // DELETE A BILL REMINDER
   Future<int> deleteBillReminder(int id) async {
     final db = await database;
     return await db.delete('bill_reminders', where: 'id = ?', whereArgs: [id]);
   }
 
+  // MARK BILL AS PAID
   Future<int> markBillAsPaid(int id, bool isPaid) async {
     final db = await database;
+
     return await db.update(
       'bill_reminders',
       {
@@ -126,8 +134,10 @@ class DatabaseHelper {
     );
   }
 
+  // MOVE TO NEXT RECURRENCE
   Future<int> advanceRecurringReminder(int id, DateTime nextDue) async {
     final db = await database;
+
     return await db.update(
       'bill_reminders',
       {
