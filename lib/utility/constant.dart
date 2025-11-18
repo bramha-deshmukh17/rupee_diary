@@ -21,3 +21,39 @@ const Icon kBackArrow = Icon(
   FontAwesomeIcons.arrowLeft,
   size: 20.0,
 );
+
+//Category icons
+final List<String> categories = [
+  'Utilities',
+  'Rent/Mortgage',
+  'Insurance',
+  'Phone/Internet',
+  'Subscription',
+  'Loan Payment',
+  'Credit Card',
+  'Other',
+];
+
+final Map<String, IconData> categoryIcons = {
+  'Utilities': FontAwesomeIcons.receipt,
+  'Rent/Mortgage': FontAwesomeIcons.house,
+  'Insurance': FontAwesomeIcons.shieldHalved,
+  'Phone/Internet': FontAwesomeIcons.wifi,
+  'Subscription': FontAwesomeIcons.repeat,
+  'Loan Payment': FontAwesomeIcons.landmark,
+  'Credit Card': FontAwesomeIcons.creditCard,
+  'Other': FontAwesomeIcons.shapes,
+};
+
+// ---- Input border/decoration constants ----
+const kOutlineBorder = OutlineInputBorder(
+  borderSide: BorderSide(color: kSecondaryColor),
+);
+const kFocusedOutlineBorder = OutlineInputBorder(
+  borderSide: BorderSide(color: kSecondaryColor, width: 2),
+);
+
+const kBaseInputDecoration = InputDecoration(
+  border: kOutlineBorder,
+  focusedBorder: kFocusedOutlineBorder,
+);

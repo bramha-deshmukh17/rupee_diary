@@ -1,0 +1,66 @@
+import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
+
+import '../model/setting.dart';
+
+class SettingDao {
+  final Database? db;
+  SettingDao(this.db);
+
+  //settings table
+  static const create = '''
+      create table settings(
+        id integer primary key autoincrement,
+        settingsKey text not null,
+        settingsValue text
+      );
+      ''';
+
+  // Insert default settings
+  static const insertDefault = '''
+      insert into settings (settingsKey, settingsValue) values
+      ('notifications', 'enabled'),
+      ('theme', 'disabled'),
+      ('authentication', 'disabled'),
+      ('password', null);
+    ''';
+
+  // UPDATE A SETTING USING MODEL
+  Future<void> updateSetting(Setting setting) async {
+    final result = await db!.update(
+      'settings',
+      {'settingsValue': setting.settingsValue},
+      where: 'settingsKey = ?',
+      whereArgs: [setting.settingsKey],
+    );
+
+    // If no row was updated → insert new one
+    if (result == 0) {
+      await db!.insert(
+        'settings',
+        setting.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+  }
+
+  // GET ALL SETTINGS AS A MAP
+  Future<List<Setting>> getSettings() async {
+    final List<Map<String, dynamic>> maps = await db!.query('settings');
+    return maps.map((map) => Setting.fromMap(map)).toList();
+  }
+
+  // ===========================
+  // DEBUG: PARSED SETTINGS MODELS
+  Future<void> debugPrintAllModels() async {
+    final list = await getSettings();
+    debugPrint('⚙️ ===== SETTINGS TABLE (MODELS) =====');
+    if (list.isEmpty) {
+      debugPrint('⚠️ No settings found');
+    } else {
+      for (final s in list) {
+        debugPrint('🔧 KEY: ${s.settingsKey} | VALUE: ${s.settingsValue}');
+      }
+    }
+  }
+}

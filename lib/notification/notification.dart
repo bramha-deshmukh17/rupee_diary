@@ -1,9 +1,12 @@
+// notification_center_screen.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
 import '../services/reminder_notification.dart';
+import '../utility/appbar.dart';
 import '../utility/constant.dart';
+import '../utility/snack.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({super.key});
@@ -18,17 +21,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   List<BillReminderModel> _items = [];
   bool _isLoading = true;
 
-  static const Map<String, IconData> _categoryIcons = {
-    'Utilities': FontAwesomeIcons.receipt,
-    'Rent/Mortgage': FontAwesomeIcons.house,
-    'Insurance': FontAwesomeIcons.shieldHalved,
-    'Phone/Internet': FontAwesomeIcons.wifi,
-    'Subscription': FontAwesomeIcons.repeat,
-    'Loan Payment': FontAwesomeIcons.landmark,
-    'Credit Card': FontAwesomeIcons.creditCard,
-    'Other': FontAwesomeIcons.shapes,
-  };
-
   @override
   void initState() {
     super.initState();
@@ -39,17 +31,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final remindersData = await DatabaseHelper.instance.getBillReminders();
-      debugPrint(
-        'NotificationCenter: total reminders in DB=${remindersData.length}',
-      );
+      final remindersData =
+          await DatabaseHelper.instance.billReminderDao.getAll();
 
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 
       final reminders =
-          remindersData.map((m) => BillReminderModel.fromMap(m)).where((r) {
-              if (r.isPaid) return false;
+          remindersData.where((r) {
+              if (r.isPaid ?? false) return false;
               final due = DateTime(
                 r.dueDate.year,
                 r.dueDate.month,
@@ -61,31 +51,81 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             }).toList()
             ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
+      if (!mounted) return;
       setState(() {
         _items = reminders;
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('NotificationCenter: error loading notifications: $e');
+      if (!mounted) return;
       setState(() => _isLoading = false);
+      showSnack('Failed to load notifications', context, error: true);
     }
   }
 
   Future<void> _markAsPaid(BillReminderModel r) async {
-    await DatabaseHelper.instance.markBillAsPaid(r.id!, true);
-    if (r.isRecurring) {
-      // Advance recurring reminder automatically and reschedule notifications
-      await ReminderNotificationService.advanceRecurringAndReschedule(r);
-    } else {
-      // Cancel any scheduled notifications for non-recurring reminders
-      await ReminderNotificationService.cancelReminderNotifications(r.id!);
+    if (r.id == null) {
+      showSnack('Invalid reminder (missing id)', context, error: true);
+      return;
     }
-    await _loadPendingNotifications();
+
+    // 1) Update DB
+    try {
+      await DatabaseHelper.instance.billReminderDao.markBillAsPaid(r.id!, true);
+    } catch (e) {
+      if (!mounted) return;
+      showSnack('Failed to update reminder status', context, error: true);
+      return;
+    }
+
+    // 2) Notifications (don’t block success if this fails)
+    try {
+      if (r.isRecurring == true) {
+        // Fetch the latest reminder row from DB (important)
+        final all = await DatabaseHelper.instance.billReminderDao.getAll();
+        final updated = all.firstWhere((m) => m.id == r.id, orElse: () => r);
+
+        // Pass context so user sees snack, and ensure service uses latest DB row
+        await ReminderNotificationService.advanceRecurringAndReschedule(
+          updated,
+          context: context,
+        );
+      } else {
+        await ReminderNotificationService.cancelReminderNotifications(
+          r.id!,
+          context: context,
+        );
+      }
+
+      if (!mounted) return;
+      showSnack(
+        'Successfully updated reminder notifications',
+        context,
+        error: false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showSnack(
+        'Failed to update reminder notifications',
+        context,
+        error: true,
+      );
+    }
+
+    // 3) Reload UI
+    try {
+      await _loadPendingNotifications();
+      if (!mounted) return;
+      showSnack('Marked as paid', context);
+    } catch (e) {
+      if (!mounted) return;
+      showSnack('Marked as paid, but refresh failed', context, error: true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = TextTheme.of(context);
+    final textTheme = Theme.of(context).textTheme;
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator(color: kPrimaryColor)),
@@ -93,7 +133,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: Appbar(title: 'Notifications', isBackButton: true),
       body:
           _items.isEmpty
               ? Center(
@@ -113,7 +153,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       title: Row(
                         children: [
                           Icon(
-                            _categoryIcons[r.category] ??
+                            categoryIcons[r.category] ??
                                 FontAwesomeIcons.shapes,
                             size: 20,
                             color: kPrimaryColor,

@@ -3,6 +3,8 @@ import 'package:rupee_diary/utility/constant.dart';
 import '../services/route_observer.dart';
 import '../utility/appbar.dart';
 import '../services/reminder_notification.dart';
+import '../utility/bottombar.dart';
+import '../utility/snack.dart';
 import 'balance_card.dart';
 import 'transactions_list.dart';
 
@@ -16,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with RouteAware  {
   int _badgeCount = 0;
+  // ignore: unused_field
   bool _alive = true;
 
   @override
@@ -49,9 +52,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware  {
   }
 
   Future<void> _refreshBadge() async {
-    final c = await ReminderNotificationService.getTodayTomorrowPendingCount();
-    if (!mounted) return;
-    setState(() => _badgeCount = c);
+     try {
+
+      final c = await ReminderNotificationService.getTodayTomorrowPendingCount();
+      if (!mounted) return;
+      setState(() => _badgeCount = c);
+
+    } catch (e) {
+      if (!mounted) return;
+
+      showSnack('Failed to refresh reminders', context, error: true);
+    }
   }
 
   @override
@@ -67,35 +78,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware  {
           ),
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 6,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Icon(Icons.home, color: Colors.deepOrange),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Icon(Icons.bar_chart, color: Colors.grey),
-              onPressed: () {},
-            ),
-            SizedBox(width: 40),
-            IconButton(
-              icon: Icon(Icons.wallet, color: Colors.grey),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Icon(Icons.category, color: Colors.grey),
-              onPressed: () {},
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: BottomBar(currentIndex: 0),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
-        backgroundColor: Colors.deepOrange,
+        backgroundColor: kPrimaryColor,
         shape: const CircleBorder(),
         child: const Icon(Icons.add, size: 28),
       ),

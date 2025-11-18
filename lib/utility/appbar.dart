@@ -27,12 +27,10 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
       leading:
           isHomePage
               ? null
-              : (isBackButton
-                  ? IconButton(
-                    icon: kBackArrow,
-                    onPressed: () => Navigator.pop(context),
-                  )
-                  : null),
+              : IconButton(
+                  icon: kBackArrow,
+                  onPressed: () => Navigator.pop(context),
+                ),
 
       title: Text(title, style: textTheme.headlineMedium),
       centerTitle: !isHomePage,

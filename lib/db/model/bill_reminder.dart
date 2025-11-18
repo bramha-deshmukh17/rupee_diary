@@ -5,11 +5,8 @@ class BillReminderModel {
   final DateTime dueDate;
   final String category;
   final String? notes;
-  final bool isRecurring;
-  final String? recurrenceType;
-  final bool isPaid;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final bool? isRecurring;
+  final bool? isPaid;
 
   BillReminderModel({
     this.id,
@@ -19,12 +16,8 @@ class BillReminderModel {
     required this.category,
     this.notes,
     this.isRecurring = false,
-    this.recurrenceType,
     this.isPaid = false,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) : createdAt = createdAt ?? DateTime.now(),
-       updatedAt = updatedAt ?? DateTime.now();
+  });
 
   Map<String, dynamic> toMap() {
     return {
@@ -34,11 +27,8 @@ class BillReminderModel {
       'due_date': dueDate.toIso8601String(),
       'category': category,
       'notes': notes,
-      'is_recurring': isRecurring ? 1 : 0,
-      'recurrence_type': recurrenceType,
-      'is_paid': isPaid ? 1 : 0,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'is_recurring': (isRecurring == true) ? 1 : 0,
+      'is_paid': (isPaid == true) ? 1 : 0,
     };
   }
 
@@ -51,10 +41,7 @@ class BillReminderModel {
       category: map['category'],
       notes: map['notes'],
       isRecurring: map['is_recurring'] == 1,
-      recurrenceType: map['recurrence_type'],
       isPaid: map['is_paid'] == 1,
-      createdAt: DateTime.parse(map['created_at']),
-      updatedAt: DateTime.parse(map['updated_at']),
     );
   }
 
@@ -66,10 +53,7 @@ class BillReminderModel {
     String? category,
     String? notes,
     bool? isRecurring,
-    String? recurrenceType,
     bool? isPaid,
-    DateTime? createdAt,
-    DateTime? updatedAt,
   }) {
     return BillReminderModel(
       id: id ?? this.id,
@@ -79,10 +63,7 @@ class BillReminderModel {
       category: category ?? this.category,
       notes: notes ?? this.notes,
       isRecurring: isRecurring ?? this.isRecurring,
-      recurrenceType: recurrenceType ?? this.recurrenceType,
       isPaid: isPaid ?? this.isPaid,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? DateTime.now(),
     );
   }
 }
