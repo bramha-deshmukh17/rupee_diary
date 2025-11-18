@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rupee_diary/settings/security.dart';
 import './settings/bill_reminder.dart';
 import './db/database_helper.dart';
 import './home/home.dart';
@@ -9,15 +10,41 @@ import './home/splash.dart';
 import './services/reminder_notification.dart';
 import '/notification/notification.dart';
 import '/services/route_observer.dart';
+import 'settings/unlock.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize notifications
-  await ReminderNotificationService.initialize();
+  // initialize DB+DAOs first
+  try {
+    await DatabaseHelper.instance.database;
+  } catch (e, st) {
+    debugPrint('main: Database init failed: $e\n$st');
+  }
 
-  final settings = await DatabaseHelper.instance.getSettings();
-  final isDark = settings['theme'] == 'enabled';
+  // Initialize notifications
+  try {
+    await ReminderNotificationService.initialize();
+  } catch (e, st) {
+    debugPrint('main: Notification init failed: $e\n$st');
+  }
+
+  // Load theme setting (fallback to light on error)
+  bool isDark = false;
+  try {
+    final settings = await DatabaseHelper.instance.settingDao.getSettings();
+    String theme = 'disabled';
+    for (final s in settings) {
+      if (s.settingsKey == 'theme') {
+        theme = s.settingsValue?.toString() ?? 'disabled';
+        break;
+      }
+    }
+    isDark = theme == 'enabled';
+  } catch (e, st) {
+    debugPrint('main: Failed to load theme setting: $e\n$st');
+    isDark = false;
+  }
 
   runApp(
     ChangeNotifierProvider(
@@ -64,11 +91,14 @@ class MyApp extends StatelessWidget {
 
       routes: <String, WidgetBuilder>{
         '/': (context) => SplashScreen(),
+        Unlock.id:(context) => const Unlock(),
+
         HomeScreen.id: (context) => HomeScreen(),
+        NotificationCenterScreen.id:(context) => const NotificationCenterScreen(),
+
         SettingsScreen.id: (context) => SettingsScreen(),
         BillReminder.id: (context) => BillReminder(),
-        NotificationCenterScreen.id:
-            (context) => const NotificationCenterScreen(),
+        SecurityScreen.id:(context) => const SecurityScreen(),
       },
       initialRoute: '/',
     );

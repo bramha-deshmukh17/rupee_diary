@@ -1,91 +1,168 @@
+// reminder_notification_service.dart
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/services.dart';
+
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
+import '../utility/snack.dart';
 
 class ReminderNotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  static bool _initialized = false;
   static const MethodChannel _tzChannel = MethodChannel('app/timezone');
 
-  // Initialize notifications, timezone, and permissions
-  static Future<void> initialize() async {
+  static int kReminderHour = 9; // 9 AM
+  static int kReminderMinute = 0; // 0 Minutes
+
+  /// Initialize timezone, notification plugin, permissions, and migrate reminders.
+  /// If [context] is provided, permission-related snackbars will be shown.
+  static Future<void> initialize([BuildContext? context]) async {
+    if (_initialized) return;
+
+    debugPrint('ReminderNotificationService: initialize() start');
+
     tz.initializeTimeZones();
     try {
       final localTz =
           await _tzChannel.invokeMethod<String>('getLocalTimezone') ?? 'UTC';
       tz.setLocalLocation(tz.getLocation(localTz));
-    } catch (_) {}
+      debugPrint('ReminderNotificationService: timezone set to $localTz');
+    } catch (e) {
+      debugPrint('ReminderNotificationService: timezone init failed: $e');
+    }
 
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    final iosInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+      notificationCategories: [
+        DarwinNotificationCategory(
+          'bill_reminder_actions',
+          actions: [
+            DarwinNotificationAction.plain('dismiss', 'Dismiss'),
+            DarwinNotificationAction.plain('mark_paid', 'Mark as Paid'),
+          ],
+        ),
+      ],
+    );
 
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        );
-
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-          android: initializationSettingsAndroid,
-          iOS: initializationSettingsIOS,
-        );
+    final initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
 
     await _notificationsPlugin.initialize(
-      initializationSettings,
+      initSettings,
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    await _requestPermissions();
-    await _migratePastRecurringReminders();
+    await _requestPermissions(context);
+    // migrate reminders but tell scheduling to skip re-initialization to avoid loops
+    await _migratePastRecurringReminders(context);
+
+    _initialized = true;
+    debugPrint('ReminderNotificationService: initialize() done');
   }
 
-  static Future<void> _requestPermissions() async {
+  /// Reads notification setting from DB.
+  static Future<bool> _notificationsEnabled() async {
+    try {
+      final settings = await DatabaseHelper.instance.settingDao.getSettings();
+      final map = <String, String>{
+        for (final s in settings)
+          if ((s.settingsKey ?? '').isNotEmpty &&
+              (s.settingsValue ?? '').isNotEmpty)
+            s.settingsKey!: s.settingsValue!,
+      };
+      // default to enabled if missing
+      final enabled = (map['notifications'] ?? 'enabled') == 'enabled';
+      debugPrint('ReminderNotificationService: notificationsEnabled=$enabled');
+      return enabled;
+    } catch (e) {
+      debugPrint(
+        'ReminderNotificationService: _notificationsEnabled error: $e',
+      );
+      return true;
+    }
+  }
+
+  /// Request permissions; show error snack if denied and [context] provided.
+  static Future<void> _requestPermissions(BuildContext? context) async {
     try {
       if (await Permission.notification.isDenied) {
-        await Permission.notification.request();
+        final status = await Permission.notification.request();
+        if (!status.isGranted && context != null) {
+          showSnack('Notification permission denied', context, error: true);
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint(
+        'ReminderNotificationService: permission (notification) error: $e',
+      );
+    }
+
     try {
       if (await Permission.scheduleExactAlarm.isDenied) {
-        await Permission.scheduleExactAlarm.request();
+        final status = await Permission.scheduleExactAlarm.request();
+        if (!status.isGranted && context != null) {
+          showSnack('Exact alarm permission denied', context, error: true);
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint(
+        'ReminderNotificationService: permission (exact alarm) error: $e',
+      );
+    }
   }
 
-  //handle Dismiss and Mark as Paid
+  /// Handle notification action taps (mark paid / dismiss).
   static void _onNotificationTap(NotificationResponse response) async {
     final payload = response.payload ?? '';
     final id = _parseReminderId(payload);
     if (id == null) return;
 
-    if (response.actionId == 'mark_paid') {
-      await DatabaseHelper.instance.markBillAsPaid(id, true);
+    debugPrint(
+      'ReminderNotificationService: notification tapped id=$id action=${response.actionId}',
+    );
 
-      // Load the reminder to know if it is recurring
-      final all = await DatabaseHelper.instance.getBillReminders();
-      final map = all.cast<Map<String, dynamic>?>().firstWhere(
-        (m) => m?['id'] == id,
-        orElse: () => null,
+    if (response.actionId == 'mark_paid') {
+      // Mark paid in DB
+      await DatabaseHelper.instance.billReminderDao.markBillAsPaid(id, true);
+
+      // Load the reminder from DB to get current fields
+      final all = await DatabaseHelper.instance.billReminderDao.getAll();
+      final r = all.firstWhere(
+        (m) => m.id == id,
+        orElse:
+            () => BillReminderModel(
+              id: id,
+              title: '',
+              amount: 0,
+              dueDate: DateTime.now(),
+              category: "General",
+            ),
       );
-      if (map != null) {
-        final r = BillReminderModel.fromMap(map);
-        if (r.isRecurring) {
-          await advanceRecurringAndReschedule(r);
-        } else {
-          await cancelReminderNotifications(id);
-        }
+
+      if (r.title.isNotEmpty && r.isRecurring == true) {
+        await advanceRecurringAndReschedule(r);
+      } else {
+        await cancelReminderNotifications(id);
       }
     } else if (response.actionId == 'dismiss') {
       final isToday = payload.endsWith('_today');
       final notifId = id * 10 + (isToday ? 1 : 0);
       await _notificationsPlugin.cancel(notifId);
+      debugPrint('ReminderNotificationService: dismissed notif $notifId');
+    } else {
+      // Regular tap: you could navigate to app screen here
+      debugPrint('ReminderNotificationService: notification tap (default)');
     }
   }
 
@@ -97,17 +174,40 @@ class ReminderNotificationService {
     return null;
   }
 
-  //schedule notifications for a reminder.
-  // - For recurring monthly reminders we create a recurring due-date notification (monthly at 00:00).
-  // - If dueDay > 1, we also create a recurring "day-before" notification at 00:00 on (dueDay - 1).
-  // - Non-recurring reminders are scheduled as one-off notifications.
+  /// Schedule notifications for a reminder.
+  /// If [context] is provided, a success / error SnackBar will be shown.
+  /// If [skipInitialize] is true, this function will NOT call initialize() (useful during migration).
   static Future<void> scheduleReminderNotifications(
-    BillReminderModel reminder,
-  ) async {
-    final settings = await DatabaseHelper.instance.getSettings();
-    if (settings['notifications'] != 'enabled') return;
+    BillReminderModel reminder, {
+    BuildContext? context,
+    bool skipInitialize = false,
+  }) async {
+    debugPrint(
+      'ReminderNotificationService: scheduleReminderNotifications id=${reminder.id} skipInit=$skipInitialize',
+    );
 
-    await cancelReminderNotifications(reminder.id!);
+    if (!skipInitialize) {
+      await initialize(context);
+    }
+
+    if (!(await _notificationsEnabled())) {
+      if (context != null) {
+        showSnack('Notifications disabled in settings', context, error: true);
+      }
+      debugPrint(
+        'ReminderNotificationService: notifications disabled; returning',
+      );
+      return;
+    }
+
+    if (reminder.id == null) {
+      if (context != null)
+        showSnack('Invalid reminder id', context, error: true);
+      debugPrint('ReminderNotificationService: invalid reminder id; returning');
+      return;
+    }
+
+    await cancelReminderNotifications(reminder.id!, context: context);
 
     final now = DateTime.now();
     final dueDate = DateTime(
@@ -117,84 +217,118 @@ class ReminderNotificationService {
     );
     final dayBefore = dueDate.subtract(const Duration(days: 1));
 
-    final scheduledDue = DateTime(
-      dueDate.year,
-      dueDate.month,
-      dueDate.day,
-      0,
-      0,
-    );
-    final scheduledBefore = DateTime(
-      dayBefore.year,
-      dayBefore.month,
-      dayBefore.day,
-      0,
-      0,
-    );
+    final dueAt = _atReminderTime(dueDate);
+    final beforeAt = _atReminderTime(dayBefore);
 
-    if (reminder.isRecurring) {
-      await _scheduleNotification(
-        id: reminder.id! * 10 + 1,
-        title: '⚠️ Bill Due Today',
-        body:
-            '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
-        scheduledDate: scheduledDue,
-        payload: 'reminder_${reminder.id}_today',
-        isRecurringMonthly: true,
-        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
-      );
-
-      if (dueDate.day > 1) {
-        await _scheduleNotification(
-          id: reminder.id! * 10,
-          title: '📋 Bill Due Tomorrow',
-          body:
-              '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
-          scheduledDate: scheduledBefore,
-          payload: 'reminder_${reminder.id}_tomorrow',
-          isRecurringMonthly: true,
-          matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
-        );
-      }
-    } else {
-      if (scheduledBefore.isAfter(now)) {
-        await _scheduleNotification(
-          id: reminder.id! * 10,
-          title: '📋 Bill Due Tomorrow',
-          body:
-              '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
-          scheduledDate: scheduledBefore,
-          payload: 'reminder_${reminder.id}_tomorrow',
-        );
-      }
-      if (scheduledDue.isAfter(now)) {
-        await _scheduleNotification(
+    try {
+      if (reminder.isRecurring ?? false) {
+        // Due day notification (recurring monthly)
+        await _schedule(
           id: reminder.id! * 10 + 1,
           title: '⚠️ Bill Due Today',
           body:
               '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
-          scheduledDate: scheduledDue,
+          scheduled: dueAt,
           payload: 'reminder_${reminder.id}_today',
+          recurring: true,
         );
+
+        // Day-before recurring (skip if due is 1st)
+        if (dueDate.day > 1) {
+          await _schedule(
+            id: reminder.id! * 10,
+            title: '📋 Bill Due Tomorrow',
+            body:
+                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
+            scheduled: beforeAt,
+            payload: 'reminder_${reminder.id}_tomorrow',
+            recurring: true,
+          );
+        }
+
+        // Optional catch-up: if due is today and time passed, fire a one-shot soon
+        if (DateTime(now.year, now.month, now.day) == dueDate &&
+            dueAt.isBefore(now)) {
+          await _schedule(
+            id:
+                reminder.id! * 10 +
+                1, // same id replaces any previous pending instance
+            title: '⚠️ Bill Due Today',
+            body:
+                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
+            scheduled: now.add(const Duration(minutes: 1)),
+            payload: 'reminder_${reminder.id}_today',
+          );
+        }
+      } else {
+        // One-time reminders: only schedule future notifications
+        if (beforeAt.isAfter(now)) {
+          await _schedule(
+            id: reminder.id! * 10,
+            title: '📋 Bill Due Tomorrow',
+            body:
+                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
+            scheduled: beforeAt,
+            payload: 'reminder_${reminder.id}_tomorrow',
+          );
+        }
+        if (dueAt.isAfter(now)) {
+          await _schedule(
+            id: reminder.id! * 10 + 1,
+            title: '⚠️ Bill Due Today',
+            body:
+                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
+            scheduled: dueAt,
+            payload: 'reminder_${reminder.id}_today',
+          );
+        } else if (DateTime(now.year, now.month, now.day) == dueDate) {
+          // catch-up: schedule in a minute if due is today and time already passed
+          await _schedule(
+            id: reminder.id! * 10 + 1,
+            title: '⚠️ Bill Due Today',
+            body:
+                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
+            scheduled: now.add(const Duration(minutes: 1)),
+            payload: 'reminder_${reminder.id}_today',
+          );
+        }
+      }
+
+      if (context != null) {
+        showSnack('Reminder scheduled successfully', context);
+      }
+      debugPrint(
+        'ReminderNotificationService: scheduling complete for id=${reminder.id}',
+      );
+    } catch (e, st) {
+      debugPrint('ReminderNotificationService: schedule failed: $e\n$st');
+      if (context != null) {
+        showSnack('Failed to schedule reminder: $e', context, error: true);
       }
     }
   }
 
-  // Internal helper: schedule a notification (zonedSchedule). If isRecurringMonthly is true
-  // and a matchDateTimeComponents is provided, the notification will repeat monthly.
-  static Future<void> _scheduleNotification({
+  // helper: clamp a date to the preferred reminder time
+  static DateTime _atReminderTime(DateTime d) =>
+      DateTime(d.year, d.month, d.day, kReminderHour, kReminderMinute);
+
+  /// Internal scheduler wrapper.
+  static Future<void> _schedule({
     required int id,
     required String title,
     required String body,
-    required DateTime scheduledDate,
+    required DateTime scheduled,
     String? payload,
-    bool isRecurringMonthly = false,
-    DateTimeComponents? matchDateTimeComponents,
+    bool recurring = false,
   }) async {
-    final androidDetails = AndroidNotificationDetails(
+    debugPrint(
+      'ReminderNotificationService: _schedule id=$id scheduled=$scheduled recurring=$recurring',
+    );
+
+    final android = AndroidNotificationDetails(
       'bill_reminders',
       'Bill Reminders',
-      channelDescription: 'Notifications for upcoming bill payments',
+      channelDescription: 'Notifications for upcoming bills',
       importance: Importance.max,
       priority: Priority.max,
       autoCancel: true,
@@ -212,108 +346,201 @@ class ReminderNotificationService {
       ],
     );
 
-    final iosDetails = DarwinNotificationDetails(
+    final ios = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
-    );
-
-    final notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
+      categoryIdentifier: 'bill_reminder_actions', // link iOS actions
     );
 
     await _notificationsPlugin.zonedSchedule(
       id,
       title,
       body,
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      notificationDetails,
+      tz.TZDateTime.from(scheduled, tz.local),
+      NotificationDetails(android: android, iOS: ios),
       payload: payload,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents:
-          isRecurringMonthly ? matchDateTimeComponents : null,
+          recurring ? DateTimeComponents.dayOfMonthAndTime : null,
     );
   }
 
-  static Future<void> cancelReminderNotifications(int reminderId) async {
-    await _notificationsPlugin.cancel(reminderId * 10);
-    await _notificationsPlugin.cancel(reminderId * 10 + 1);
+  /// Cancel notifications for a reminder. If [context] is provided, show a snackbar.
+  static Future<void> cancelReminderNotifications(
+    int id, {
+    BuildContext? context,
+  }) async {
+    debugPrint(
+      'ReminderNotificationService: cancelReminderNotifications id=$id',
+    );
+    await _notificationsPlugin.cancel(id * 10);
+    await _notificationsPlugin.cancel(id * 10 + 1);
+
+    if (context != null) showSnack('Existing notifications cleared', context);
   }
 
-  // Called by initialize() to move any recurring reminders that are in the past
-  // forward until their dueDate is >= today. This prevents recurring reminders
-  // from remaining stuck in the past.
-  static Future<void> _migratePastRecurringReminders() async {
-    final reminders = await DatabaseHelper.instance.getBillReminders();
+  /// Move past recurring reminders forward and reschedule. Shows snack if [context] provided.
+  /// Uses scheduleReminderNotifications(..., skipInitialize: true) to avoid reinitialization loop.
+  static Future<void> _migratePastRecurringReminders(
+    BuildContext? context,
+  ) async {
+    debugPrint(
+      'ReminderNotificationService: migratePastRecurringReminders start',
+    );
+    final reminders = await DatabaseHelper.instance.billReminderDao.getAll();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    for (final map in reminders) {
-      final r = BillReminderModel.fromMap(map);
-      if (!r.isRecurring) continue;
+    for (final r in reminders) {
+      if (!(r.isRecurring ?? false)) continue;
 
       DateTime due = DateTime(r.dueDate.year, r.dueDate.month, r.dueDate.day);
       bool advanced = false;
+
       while (due.isBefore(today)) {
         due = _addMonthsSafe(due, 1);
         advanced = true;
       }
 
       if (advanced) {
-        await DatabaseHelper.instance.advanceRecurringReminder(r.id!, due);
+        debugPrint(
+          'ReminderNotificationService: advancing recurring reminder id=${r.id} to $due',
+        );
+        await DatabaseHelper.instance.billReminderDao.advanceRecurringReminder(
+          r.id!,
+          due,
+        );
         final updated = r.copyWith(dueDate: due, isPaid: false);
-        await cancelReminderNotifications(r.id!);
-        await scheduleReminderNotifications(updated);
+        await cancelReminderNotifications(r.id!, context: context);
+        // skipInitialize true because we are already inside initialize
+        await scheduleReminderNotifications(
+          updated,
+          context: context,
+          skipInitialize: true,
+        );
+
+        if (context != null) {
+          showSnack('Recurring reminder updated automatically', context);
+        }
       } else {
-        await scheduleReminderNotifications(r);
+        await scheduleReminderNotifications(
+          r,
+          context: context,
+          skipInitialize: true,
+        );
+      }
+    }
+    debugPrint(
+      'ReminderNotificationService: migratePastRecurringReminders done',
+    );
+  }
+
+  static DateTime _addMonthsSafe(DateTime base, int months) {
+    final targetYear = base.year + ((base.month + months - 1) ~/ 12);
+    final targetMonth = ((base.month + months - 1) % 12) + 1;
+    final lastDay = DateTime(targetYear, targetMonth + 1, 0).day;
+    return DateTime(targetYear, targetMonth, base.day.clamp(1, lastDay));
+  }
+
+  /// Advance a recurring reminder after marking paid and reschedule next occurrence.
+  /// If [context] is provided, show a snackbar on success/failure.
+  static Future<void> advanceRecurringAndReschedule(
+    BillReminderModel reminder, {
+    BuildContext? context,
+  }) async {
+    debugPrint(
+      'ReminderNotificationService: advanceRecurringAndReschedule id=${reminder.id}',
+    );
+    try {
+      // Ensure initialized
+      await initialize(context);
+
+      if (!(await _notificationsEnabled())) {
+        if (context != null) {
+          showSnack('Notifications disabled in settings', context, error: true);
+        }
+        debugPrint(
+          'ReminderNotificationService: notifications disabled during advance; aborting',
+        );
+        return;
+      }
+
+      if (reminder.id == null) {
+        debugPrint(
+          'ReminderNotificationService: reminder id null in advanceRecurringAndReschedule',
+        );
+        if (context != null)
+          showSnack('Invalid reminder', context, error: true);
+        return;
+      }
+
+      // Compute next due date
+      final base = DateTime(
+        reminder.dueDate.year,
+        reminder.dueDate.month,
+        reminder.dueDate.day,
+      );
+      final nextDate = _addMonthsSafe(base, 1);
+
+      debugPrint(
+        'ReminderNotificationService: updating DB for id=${reminder.id} -> nextDate=$nextDate',
+      );
+
+      // Update DB (advance the stored due date)
+      await DatabaseHelper.instance.billReminderDao.advanceRecurringReminder(
+        reminder.id!,
+        nextDate,
+      );
+
+      // Re-load the updated reminder from DB to ensure latest data
+      final all = await DatabaseHelper.instance.billReminderDao.getAll();
+      final updatedReminder = all.firstWhere(
+        (m) => m.id == reminder.id,
+        orElse: () => reminder.copyWith(dueDate: nextDate, isPaid: false),
+      );
+
+      // Cancel old notifications and schedule new ones using updated model
+      await cancelReminderNotifications(reminder.id!, context: context);
+      await scheduleReminderNotifications(updatedReminder, context: context);
+
+      if (context != null) {
+        final d = nextDate.toLocal().toIso8601String().split('T').first;
+        showSnack('Rescheduled for $d', context);
+      }
+
+      debugPrint(
+        'ReminderNotificationService: advanceRecurringAndReschedule done for id=${reminder.id}',
+      );
+    } catch (e, st) {
+      debugPrint(
+        'ReminderNotificationService: advanceRecurringAndReschedule failed: $e\n$st',
+      );
+      if (context != null) {
+        showSnack(
+          'Failed to reschedule recurring reminder',
+          context,
+          error: true,
+        );
       }
     }
   }
 
-  // Safely add months handling month-end rollover
-  static DateTime _addMonthsSafe(DateTime base, int months) {
-    final y = base.year;
-    final m = base.month + months;
-    final targetYear = y + ((m - 1) ~/ 12);
-    final targetMonth = ((m - 1) % 12) + 1;
-    final lastDay = DateTime(targetYear, targetMonth + 1, 0).day;
-    final day = base.day.clamp(1, lastDay);
-    return DateTime(targetYear, targetMonth, day);
-  }
-
-  // Called when a reminder is marked as paid: advance to next occurrence and reschedule
-  static Future<void> advanceRecurringAndReschedule(
-    BillReminderModel reminder,
-  ) async {
-    final next = _addMonthsSafe(reminder.dueDate, 1);
-    await DatabaseHelper.instance.advanceRecurringReminder(reminder.id!, next);
-    final advanced = reminder.copyWith(dueDate: next, isPaid: false);
-    await cancelReminderNotifications(reminder.id!);
-    await scheduleReminderNotifications(advanced);
-  }
-
-  // Used for showing badge count (today/tomorrow)
+  /// Count pending reminders for today/tomorrow
   static Future<int> getTodayTomorrowPendingCount() async {
-    final settings = await DatabaseHelper.instance.getSettings();
-    if (settings['notifications'] != 'enabled') return 0;
+    if (!(await _notificationsEnabled())) return 0;
 
-    final data = await DatabaseHelper.instance.getBillReminders();
+    final data = await DatabaseHelper.instance.billReminderDao.getAll();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    int count = 0;
 
-    for (final m in data) {
-      final r = BillReminderModel.fromMap(m);
-      if (r.isPaid) continue;
-
+    return data.where((r) {
+      if (r.isPaid == true) return false;
       final due = DateTime(r.dueDate.year, r.dueDate.month, r.dueDate.day);
       final diff = due.difference(today).inDays;
-
-      if (diff == 0 || diff == 1) count++;
-    }
-    return count;
+      return diff == 0 || diff == 1;
+    }).length;
   }
 }

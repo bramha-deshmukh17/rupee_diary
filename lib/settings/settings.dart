@@ -3,11 +3,12 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:rupee_diary/utility/constant.dart';
 import '../db/database_helper.dart';
+import '../db/model/setting.dart';
 import '../main.dart' show ThemeProvider;
 import '../utility/appbar.dart';
+import '../utility/snack.dart';
 import 'bill_reminder.dart';
-import '../services/reminder_notification.dart';
-import '../db/model/bill_reminder.dart';
+import 'security.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -33,19 +34,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Function to load settings from the database into the local state
   Future<void> _loadSettings() async {
-    final settings = await DatabaseHelper.instance.getSettings();
-    if (!mounted) return;
-    setState(() {
-      _settings = settings;
-      _isLoading = false;
-    });
-    // Apply the saved theme setting
-    context.read<ThemeProvider>().toggleTheme(settings['theme'] == 'enabled');
+    setState(() => _isLoading = true);
+    try {
+      final settings = await DatabaseHelper.instance.settingDao.getSettings();
+      if (!mounted) return;
+      setState(() {
+        _settings = Map.fromEntries(
+          settings.map((s) {
+            final m = s.toMap();
+            return MapEntry<String, String>(
+              (m['settingsKey'] as String?) ?? '',
+              (m['settingsValue'] as String?) ?? '',
+            );
+          }),
+        );
+        _isLoading = false;
+      });
+
+      // Apply the saved theme setting (best-effort)
+      try {
+        context.read<ThemeProvider>().toggleTheme(_settings['theme'] == 'enabled');
+      } catch (e) {
+        if (mounted) {
+          showSnack('Failed to apply theme', context, error: true);
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      showSnack('Failed to load settings', context, error: true);
+    }
   }
 
   // Function to handle toggling a setting
   Future<void> _handleToggle(String key, bool isEnabled) async {
     final newValue = isEnabled ? 'enabled' : 'disabled';
+    final prev = _settings[key];
 
     setState(() {
       _settings[key] = newValue;
@@ -54,33 +78,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     });
 
-    // Update the value in the database
-    await DatabaseHelper.instance.updateSetting(key, newValue);
+    try {
+      await DatabaseHelper.instance.settingDao.updateSetting(
+        Setting(settingsKey: key, settingsValue: newValue),
+      );
 
-    // If notifications setting changed, schedule or cancel notifications for existing reminders
-    if (key == 'notifications') {
-      try {
-        final remindersData = await DatabaseHelper.instance.getBillReminders();
-        if (isEnabled) {
-          for (final map in remindersData) {
-            final reminder = BillReminderModel.fromMap(map);
-            if (!reminder.isPaid) {
-              await ReminderNotificationService.scheduleReminderNotifications(
-                reminder,
-              );
-            }
-          }
-        } else {
-          for (final map in remindersData) {
-            final id = map['id'] as int?;
-            if (id != null) {
-              await ReminderNotificationService.cancelReminderNotifications(id);
-            }
-          }
+      if (!mounted) return;
+      final msg = switch (key) {
+        'notifications' => 'Notifications ${isEnabled ? 'enabled' : 'disabled'}',
+        'theme' => 'Dark mode ${isEnabled ? 'enabled' : 'disabled'}',
+        _ => 'Setting updated'
+      };
+      showSnack(msg, context);
+    } catch (e) {
+      if (!mounted) return;
+      // revert UI on failure
+      setState(() {
+        if (prev != null) _settings[key] = prev;
+        if (key == 'theme') {
+          themeProvider.toggleTheme(prev == 'enabled');
         }
-      } catch (e) {
-        // ignore errors - best effort scheduling/cancel
-      }
+      });
+      showSnack('Failed to update $key', context, error: true);
     }
   }
 
@@ -139,6 +158,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
+          /// Security
+          const SectionTitle(title: "SECURITY"),
+          SettingsTile(
+            icon: FontAwesomeIcons.lock,
+            iconColor: kPrimaryColor,
+            title: "App Lock",
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.pushNamed(context, SecurityScreen.id);
+            },
+          ),
+
           /// ABOUT
           const SectionTitle(title: "ABOUT"),
           SettingsTile(
@@ -159,7 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 30),
           Center(
             child: Text(
-              "Version 1.1.1",
+              "Version 1.2.0",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
           ),
@@ -180,9 +211,11 @@ class SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Text(
         title,
-        style: TextTheme.of(
-          context,
-        ).bodyMedium?.copyWith(color: Colors.grey[600]),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey,
+        ),
       ),
     );
   }
@@ -216,7 +249,10 @@ class SettingsTile extends StatelessWidget {
           backgroundColor: iconColor.withOpacity(0.1),
           child: Icon(icon, color: iconColor, size: 18),
         ),
-        title: Text(title, style: TextTheme.of(context).bodyLarge),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
         trailing: trailing,
         onTap: onTap,
       ),

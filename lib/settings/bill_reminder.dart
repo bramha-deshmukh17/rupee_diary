@@ -6,6 +6,7 @@ import '../db/model/bill_reminder.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
 import '../services/reminder_notification.dart';
+import '../utility/snack.dart';
 import 'edit_add_reminder.dart';
 
 class BillReminder extends StatefulWidget {
@@ -27,19 +28,49 @@ class _BillReminderState extends State<BillReminder> {
   }
 
   Future<void> _loadReminders() async {
-    final reminders = await DatabaseHelper.instance.getBillReminders();
-    setState(() {
-      _reminders = reminders.map((r) => BillReminderModel.fromMap(r)).toList();
-      _isLoading = false;
-    });
+    setState(() => _isLoading = true);
+    try {
+      final reminders = await DatabaseHelper.instance.billReminderDao.getAll();
+      if (!mounted) return;
+      setState(() {
+        _reminders = reminders;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      showSnack('Failed to load reminders', context, error: true);
+    }
   }
 
   Future<void> _deleteReminder(BillReminderModel reminder) async {
-    // Cancel notifications before deleting
-    await ReminderNotificationService.cancelReminderNotifications(reminder.id!);
-    await DatabaseHelper.instance.deleteBillReminder(reminder.id!);
-    _loadReminders();
+    try {
+      if (reminder.id == null) {
+        showSnack('Invalid reminder (missing id)', context, error: true);
+        return;
+      }
+
+      // Best-effort cancel notifications (non-fatal if it fails)
+      try {
+        await ReminderNotificationService.cancelReminderNotifications(
+          reminder.id!,
+        );
+      } catch (e) {
+        // Keep going; still delete from DB
+      }
+
+      await DatabaseHelper.instance.billReminderDao.deleteBillReminder(
+        reminder.id!,
+      );
+      await _loadReminders();
+      if (!mounted) return;
+      showSnack('Reminder deleted', context);
+    } catch (e) {
+      if (!mounted) return;
+      showSnack('Failed to delete reminder', context, error: true);
+    }
   }
+
 
   void _showAddEditDialog([BillReminderModel? reminder]) {
     showDialog(
@@ -93,44 +124,34 @@ class _BillReminderState extends State<BillReminder> {
 
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(FontAwesomeIcons.fileInvoice, size: 64, color: kGrey),
-          khBox,
-          Text(
-            'No Bill Reminders',
-            style: textTheme.displayLarge?.copyWith(
-              color: kGrey,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          khBox,
-          Text(
-            'Add your first bill reminder to get started',
-            style: textTheme.displayLarge?.copyWith(
-              color: kGrey,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Icon(FontAwesomeIcons.fileInvoice, size: 64, color: kGrey),
+        khBox,
+        Text(
+        'No Bill Reminders',
+        textAlign: TextAlign.center,
+        style: textTheme.displayLarge?.copyWith(
+          color: kGrey,
+        ),
+        ),
+        Text(
+        'Add your first bill reminder to get started',
+        textAlign: TextAlign.center,
+        style: textTheme.headlineMedium?.copyWith(
+          color: kGrey,
+        ),
+        ),
+      ],
       ),
     );
   }
 
   Widget _buildReminderCard(BillReminderModel reminder) {
-    // Category icon mapping
-    final Map<String, IconData> _categoryIcons = {
-      'Utilities': FontAwesomeIcons.receipt,
-      'Rent/Mortgage': FontAwesomeIcons.house,
-      'Insurance': FontAwesomeIcons.shieldHalved,
-      'Phone/Internet': FontAwesomeIcons.wifi,
-      'Subscription': FontAwesomeIcons.repeat,
-      'Loan Payment': FontAwesomeIcons.landmark,
-      'Credit Card': FontAwesomeIcons.creditCard,
-      'Other': FontAwesomeIcons.shapes,
-    };
+    
 
-    final iconData = _categoryIcons[reminder.category] ?? Icons.category;
+    final iconData = categoryIcons[reminder.category] ?? Icons.category;
     final textTheme = TextTheme.of(context);
 
     return Card(

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
 import '../services/reminder_notification.dart';
 import '../utility/constant.dart';
+import '../utility/snack.dart';
 
 class AddEditReminderDialog extends StatefulWidget {
   final BillReminderModel? reminder;
@@ -27,28 +27,6 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
   String _selectedCategory = 'Utilities';
   bool _isRecurring = false;
 
-  final List<String> _categories = [
-    'Utilities',
-    'Rent/Mortgage',
-    'Insurance',
-    'Phone/Internet',
-    'Subscription',
-    'Loan Payment',
-    'Credit Card',
-    'Other',
-  ];
-
-  final Map<String, IconData> _categoryIcons = {
-    'Utilities': FontAwesomeIcons.receipt,
-    'Rent/Mortgage': FontAwesomeIcons.house,
-    'Insurance': FontAwesomeIcons.shieldHalved,
-    'Phone/Internet': FontAwesomeIcons.wifi,
-    'Subscription': FontAwesomeIcons.repeat,
-    'Loan Payment': FontAwesomeIcons.landmark,
-    'Credit Card': FontAwesomeIcons.creditCard,
-    'Other': FontAwesomeIcons.shapes,
-  };
-
   @override
   void initState() {
     super.initState();
@@ -57,14 +35,16 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
       _amountController.text = widget.reminder!.amount.toString();
       _notesController.text = widget.reminder!.notes ?? '';
       _selectedDate = widget.reminder!.dueDate;
-      _selectedCategory = widget.reminder!.category;
-      _isRecurring = widget.reminder!.isRecurring;
+      _selectedCategory = widget.reminder!.category.toString();
+      _isRecurring = widget.reminder!.isRecurring.toString() == 'true';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final labelColor =
+        Theme.of(context).brightness == Brightness.dark ? kWhite : kBlack;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -86,43 +66,47 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                 khBox,
                 TextFormField(
                   controller: _titleController,
-                  decoration: const InputDecoration(
+                  decoration: kBaseInputDecoration.copyWith(
                     labelText: 'Bill Title*',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: labelColor),
                   ),
+                  cursorColor: kSecondaryColor,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Please enter a title';
+                    }
                     return null;
                   },
                 ),
                 khBox,
                 TextFormField(
                   controller: _amountController,
-                  decoration: const InputDecoration(
+                  decoration: kBaseInputDecoration.copyWith(
                     labelText: 'Amount*',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: labelColor),
                     prefixText: '₹',
                   ),
+                  cursorColor: kSecondaryColor,
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Please enter an amount';
-                    if (double.tryParse(value) == null)
+                    }
+                    if (double.tryParse(value) == null) {
                       return 'Please enter a valid number';
+                    }
                     return null;
                   },
                 ),
                 khBox,
                 DropdownButtonFormField<String>(
-                  value: _selectedCategory,
-                  decoration: InputDecoration(
+                  initialValue: _selectedCategory,
+                  decoration: kBaseInputDecoration.copyWith(
                     labelText: 'Category',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: Icon(_categoryIcons[_selectedCategory]),
+                    prefixIcon: Icon(categoryIcons[_selectedCategory]),
                   ),
                   items:
-                      _categories.map((category) {
+                      categories.map((category) {
                         return DropdownMenuItem(
                           value: category,
                           child: Text(category),
@@ -137,10 +121,18 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                 khBox,
                 InkWell(
                   onTap: () async {
+                    final now = DateTime.now();
+                    final minDate =
+                        _selectedDate.isBefore(now) ? _selectedDate : now;
+
                     final date = await showDatePicker(
                       context: context,
                       initialDate: _selectedDate,
-                      firstDate: _selectedDate,
+                      firstDate: DateTime(
+                        minDate.year,
+                        minDate.month,
+                        minDate.day,
+                      ),
                       lastDate: DateTime.now().add(const Duration(days: 31)),
                     );
                     if (date != null) {
@@ -170,6 +162,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                 CheckboxListTile(
                   title: const Text('Monthly Recurring Bill'),
                   value: _isRecurring,
+                  checkColor: kSecondaryColor,
                   onChanged: (value) {
                     setState(() {
                       _isRecurring = value!;
@@ -180,12 +173,15 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                 khBox,
                 TextFormField(
                   controller: _notesController,
-                  decoration: const InputDecoration(
+                  decoration: kBaseInputDecoration.copyWith(
                     labelText: 'Notes (Optional)',
-                    border: OutlineInputBorder(),
-                  ),
+                    labelStyle: TextStyle(color: labelColor),
+                    ),
+                
+                  cursorColor: kSecondaryColor,
                   maxLines: 3,
-                ),
+                  ),
+                
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -214,47 +210,102 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
   }
 
   Future<void> _saveReminder() async {
-    if (_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      final amount = double.tryParse(_amountController.text.trim()) ?? 0;
+     
       final reminder = BillReminderModel(
         id: widget.reminder?.id,
-        title: _titleController.text,
-        amount: double.parse(_amountController.text),
+        title: _titleController.text.trim(),
+        amount: amount,
         dueDate: _selectedDate,
         category: _selectedCategory,
-        notes: _notesController.text.isEmpty ? null : _notesController.text,
+        notes:
+            _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim(),
         isRecurring: _isRecurring,
-        recurrenceType: _isRecurring ? 'Monthly' : null,
         isPaid: widget.reminder?.isPaid ?? false,
       );
 
       int reminderId;
+
       if (widget.reminder == null) {
-        reminderId = await DatabaseHelper.instance.insertBillReminder(
-          reminder.toMap(),
-        );
+        // Insert
+        try {
+          reminderId = await DatabaseHelper.instance.billReminderDao
+              .insertBillReminder(reminder.toMap());
+        } catch (e) {
+          if (!mounted) return;
+          showSnack('Failed to save reminder', context, error: true);
+          return;
+        }
+
+        // Schedule (non-fatal)
         final newReminder = reminder.copyWith(id: reminderId);
-        await ReminderNotificationService.scheduleReminderNotifications(
-          newReminder,
-        );
+        try {
+          await ReminderNotificationService.scheduleReminderNotifications(
+            newReminder,
+          );
+        } catch (e) {
+          if (mounted) {
+            showSnack(
+              'Saved, but failed to schedule notifications',
+              context,
+              error: true,
+            );
+          }
+        }
+
+        if (mounted) showSnack('Reminder added', context);
       } else {
+        // Update
         reminderId = widget.reminder!.id!;
-        await DatabaseHelper.instance.updateBillReminder(
-          reminderId,
-          reminder.toMap(),
-        );
-        await ReminderNotificationService.cancelReminderNotifications(
-          reminderId,
-        );
+        try {
+          await DatabaseHelper.instance.billReminderDao.updateBillReminder(
+            reminderId,
+            reminder.toMap(),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          showSnack('Failed to update reminder', context, error: true);
+          return;
+        }
+
+        // Reschedule (best-effort)
+        try {
+          await ReminderNotificationService.cancelReminderNotifications(
+            reminderId,
+          );
+        } catch (_) {}
         final updatedReminder = reminder.copyWith(id: reminderId);
-        await ReminderNotificationService.scheduleReminderNotifications(
-          updatedReminder,
-        );
+        try {
+          await ReminderNotificationService.scheduleReminderNotifications(
+            updatedReminder,
+          );
+        } catch (e) {
+          if (mounted) {
+            showSnack(
+              'Updated, but failed to reschedule notifications',
+              context,
+              error: true,
+            );
+          }
+        }
+
+        if (mounted) showSnack('Reminder updated', context);
       }
 
       widget.onSave();
+      if (!mounted) return;
       Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      showSnack('Something went wrong while saving', context, error: true);
     }
   }
+
 
   @override
   void dispose() {
