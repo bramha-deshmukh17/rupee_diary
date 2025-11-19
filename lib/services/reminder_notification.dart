@@ -25,14 +25,11 @@ class ReminderNotificationService {
   static Future<void> initialize([BuildContext? context]) async {
     if (_initialized) return;
 
-    debugPrint('ReminderNotificationService: initialize() start');
-
     tz.initializeTimeZones();
     try {
       final localTz =
           await _tzChannel.invokeMethod<String>('getLocalTimezone') ?? 'UTC';
       tz.setLocalLocation(tz.getLocation(localTz));
-      debugPrint('ReminderNotificationService: timezone set to $localTz');
     } catch (e) {
       debugPrint('ReminderNotificationService: timezone init failed: $e');
     }
@@ -68,7 +65,6 @@ class ReminderNotificationService {
     await _migratePastRecurringReminders(context);
 
     _initialized = true;
-    debugPrint('ReminderNotificationService: initialize() done');
   }
 
   /// Reads notification setting from DB.
@@ -83,7 +79,6 @@ class ReminderNotificationService {
       };
       // default to enabled if missing
       final enabled = (map['notifications'] ?? 'enabled') == 'enabled';
-      debugPrint('ReminderNotificationService: notificationsEnabled=$enabled');
       return enabled;
     } catch (e) {
       debugPrint(
@@ -128,10 +123,6 @@ class ReminderNotificationService {
     final id = _parseReminderId(payload);
     if (id == null) return;
 
-    debugPrint(
-      'ReminderNotificationService: notification tapped id=$id action=${response.actionId}',
-    );
-
     if (response.actionId == 'mark_paid') {
       // Mark paid in DB
       await DatabaseHelper.instance.billReminderDao.markBillAsPaid(id, true);
@@ -159,7 +150,6 @@ class ReminderNotificationService {
       final isToday = payload.endsWith('_today');
       final notifId = id * 10 + (isToday ? 1 : 0);
       await _notificationsPlugin.cancel(notifId);
-      debugPrint('ReminderNotificationService: dismissed notif $notifId');
     } else {
       // Regular tap: you could navigate to app screen here
       debugPrint('ReminderNotificationService: notification tap (default)');
@@ -182,10 +172,6 @@ class ReminderNotificationService {
     BuildContext? context,
     bool skipInitialize = false,
   }) async {
-    debugPrint(
-      'ReminderNotificationService: scheduleReminderNotifications id=${reminder.id} skipInit=$skipInitialize',
-    );
-
     if (!skipInitialize) {
       await initialize(context);
     }
@@ -194,16 +180,13 @@ class ReminderNotificationService {
       if (context != null) {
         showSnack('Notifications disabled in settings', context, error: true);
       }
-      debugPrint(
-        'ReminderNotificationService: notifications disabled; returning',
-      );
       return;
     }
 
     if (reminder.id == null) {
-      if (context != null)
+      if (context != null) {
         showSnack('Invalid reminder id', context, error: true);
-      debugPrint('ReminderNotificationService: invalid reminder id; returning');
+      }
       return;
     }
 
@@ -297,11 +280,7 @@ class ReminderNotificationService {
       if (context != null) {
         showSnack('Reminder scheduled successfully', context);
       }
-      debugPrint(
-        'ReminderNotificationService: scheduling complete for id=${reminder.id}',
-      );
     } catch (e, st) {
-      debugPrint('ReminderNotificationService: schedule failed: $e\n$st');
       if (context != null) {
         showSnack('Failed to schedule reminder: $e', context, error: true);
       }
@@ -321,10 +300,6 @@ class ReminderNotificationService {
     String? payload,
     bool recurring = false,
   }) async {
-    debugPrint(
-      'ReminderNotificationService: _schedule id=$id scheduled=$scheduled recurring=$recurring',
-    );
-
     final android = AndroidNotificationDetails(
       'bill_reminders',
       'Bill Reminders',
@@ -373,9 +348,6 @@ class ReminderNotificationService {
     int id, {
     BuildContext? context,
   }) async {
-    debugPrint(
-      'ReminderNotificationService: cancelReminderNotifications id=$id',
-    );
     await _notificationsPlugin.cancel(id * 10);
     await _notificationsPlugin.cancel(id * 10 + 1);
 
@@ -387,9 +359,6 @@ class ReminderNotificationService {
   static Future<void> _migratePastRecurringReminders(
     BuildContext? context,
   ) async {
-    debugPrint(
-      'ReminderNotificationService: migratePastRecurringReminders start',
-    );
     final reminders = await DatabaseHelper.instance.billReminderDao.getAll();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -406,9 +375,6 @@ class ReminderNotificationService {
       }
 
       if (advanced) {
-        debugPrint(
-          'ReminderNotificationService: advancing recurring reminder id=${r.id} to $due',
-        );
         await DatabaseHelper.instance.billReminderDao.advanceRecurringReminder(
           r.id!,
           due,
@@ -433,9 +399,6 @@ class ReminderNotificationService {
         );
       }
     }
-    debugPrint(
-      'ReminderNotificationService: migratePastRecurringReminders done',
-    );
   }
 
   static DateTime _addMonthsSafe(DateTime base, int months) {
@@ -451,9 +414,6 @@ class ReminderNotificationService {
     BillReminderModel reminder, {
     BuildContext? context,
   }) async {
-    debugPrint(
-      'ReminderNotificationService: advanceRecurringAndReschedule id=${reminder.id}',
-    );
     try {
       // Ensure initialized
       await initialize(context);
@@ -462,16 +422,11 @@ class ReminderNotificationService {
         if (context != null) {
           showSnack('Notifications disabled in settings', context, error: true);
         }
-        debugPrint(
-          'ReminderNotificationService: notifications disabled during advance; aborting',
-        );
         return;
       }
 
       if (reminder.id == null) {
-        debugPrint(
-          'ReminderNotificationService: reminder id null in advanceRecurringAndReschedule',
-        );
+      
         if (context != null)
           showSnack('Invalid reminder', context, error: true);
         return;
@@ -484,10 +439,6 @@ class ReminderNotificationService {
         reminder.dueDate.day,
       );
       final nextDate = _addMonthsSafe(base, 1);
-
-      debugPrint(
-        'ReminderNotificationService: updating DB for id=${reminder.id} -> nextDate=$nextDate',
-      );
 
       // Update DB (advance the stored due date)
       await DatabaseHelper.instance.billReminderDao.advanceRecurringReminder(
@@ -511,13 +462,8 @@ class ReminderNotificationService {
         showSnack('Rescheduled for $d', context);
       }
 
-      debugPrint(
-        'ReminderNotificationService: advanceRecurringAndReschedule done for id=${reminder.id}',
-      );
     } catch (e, st) {
-      debugPrint(
-        'ReminderNotificationService: advanceRecurringAndReschedule failed: $e\n$st',
-      );
+  
       if (context != null) {
         showSnack(
           'Failed to reschedule recurring reminder',
