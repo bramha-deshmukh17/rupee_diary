@@ -14,7 +14,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(Duration(seconds: 3), () async {
+    Timer(Duration(seconds: 2), () async {
       final settings = await DatabaseHelper.instance.settingDao.getSettings();
       bool authentication = false;
       for (final s in settings) {

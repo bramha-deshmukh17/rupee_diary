@@ -1,4 +1,3 @@
-// notification_center_screen.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../db/database_helper.dart';
@@ -69,7 +68,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       return;
     }
 
-    // 1) Update DB
+    //Update DB
     try {
       await DatabaseHelper.instance.billReminderDao.markBillAsPaid(r.id!, true);
     } catch (e) {
@@ -78,7 +77,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       return;
     }
 
-    // 2) Notifications (don’t block success if this fails)
+    //Notifications (don’t block success if this fails)
     try {
       if (r.isRecurring == true) {
         // Fetch the latest reminder row from DB (important)
@@ -112,7 +111,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       );
     }
 
-    // 3) Reload UI
+    //Reload UI
     try {
       await _loadPendingNotifications();
       if (!mounted) return;
@@ -133,7 +132,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     }
 
     return Scaffold(
-      appBar: Appbar(title: 'Notifications', isBackButton: true),
+      appBar: Appbar(title: 'Notifications', isBackButton: true,),
       body:
           _items.isEmpty
               ? Center(
@@ -175,7 +174,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                             'Due: ${r.dueDate.toLocal().toIso8601String().split('T')[0]}',
                             style: textTheme.bodyMedium?.copyWith(color: kRed),
                           ),
-                          Text('₹${r.amount.toStringAsFixed(2)}'),
+                          Text('₹ ${r.amount.toStringAsFixed(2)}'),
                         ],
                       ),
                       trailing: Row(

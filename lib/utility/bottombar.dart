@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../bank/bank.dart';
+import '../home/home.dart';
 import '../utility/constant.dart';
 class BottomBar extends StatefulWidget {
   final int currentIndex;
@@ -22,25 +25,29 @@ class _BottomBarState extends State<BottomBar> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           IconButton(
-            icon: Icon(Icons.home, color: _colorFor(0)),
+            icon: Icon(FontAwesomeIcons.house, color: _colorFor(0)),
             onPressed: () {
               if(widget.currentIndex != 0) {
-                Navigator.of(context).pushReplacementNamed('/home');
+                Navigator.pushNamed(context, HomeScreen.id);
               }
             },
           ),
           IconButton(
-            icon: Icon(Icons.bar_chart, color: _colorFor(1)),
+            icon: Icon(FontAwesomeIcons.chartBar, color: _colorFor(1)),
             onPressed: () {},
           ),
           const SizedBox(width: 40),
           IconButton(
-            icon: Icon(Icons.wallet, color: _colorFor(2)),
+            icon: Icon(FontAwesomeIcons.wallet, color: _colorFor(2)),
             onPressed: () {},
           ),
           IconButton(
-            icon: Icon(Icons.category, color: _colorFor(3)),
-            onPressed: () {},
+            icon: Icon(FontAwesomeIcons.bank, color: _colorFor(3)),
+            onPressed: () {
+              if (widget.currentIndex != 3) {
+                Navigator.pushNamed(context, BankScreen.id);
+              }
+            },
           ),
         ],
       ),

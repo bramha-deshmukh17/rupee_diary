@@ -4,7 +4,7 @@ class TransactionModel {
   final double amount;
   final String type; // credit / debit
   final DateTime date;
-  final int? category;
+  final String category;
   final String? notes;
 
   TransactionModel({
@@ -13,7 +13,7 @@ class TransactionModel {
     required this.amount,
     required this.type,
     required this.date,
-    this.category,
+    required this.category,
     this.notes,
   });
 
@@ -47,7 +47,7 @@ class TransactionModel {
     double? amount,
     String? type,
     DateTime? date,
-    int? category,
+    String? category,
     String? notes,
   }) {
     return TransactionModel(

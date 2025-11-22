@@ -22,7 +22,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
   Map<String, String> _settings = {};
   bool _isLoading = true;
   ThemeProvider get themeProvider => context.read<ThemeProvider>();
-  TextTheme get textTheme => Theme.of(context).textTheme;
 
   @override
   void initState() {
@@ -114,6 +113,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     // A simple loading check
     if (_isLoading) {
       return const Scaffold(
@@ -122,7 +122,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     }
 
     return Scaffold(
-      appBar: Appbar(title: "Security", isBackButton: true),
+      appBar: Appbar(title: "Security", isBackButton: true,),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -136,12 +136,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ListTile(
-                title: const Text(
+                title: Text(
                   'App Lock',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: textTheme.bodyLarge,
                 ),
                 trailing: Switch(
                   value: _settings['authentication'] == 'enabled',
@@ -157,17 +154,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
           Padding(
             padding: EdgeInsets.all(16.0),
             child: Card(
+              elevation: 5.0,
               margin: const EdgeInsets.symmetric(vertical: 6),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child:ListTile(
-                      title: const Text(
+                      title: Text(
                         'Set PIN',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: textTheme.bodyLarge,
                       ),
                       trailing: const Icon(
                         Icons.arrow_forward_ios,
@@ -212,9 +207,11 @@ class _PasswordDialogState extends State<PasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return AlertDialog(
-      title: Text("Enter PIN"),
+      title: Text("Enter PIN", style: textTheme.headlineMedium),
       content: TextField(
+        style: textTheme.bodyLarge,
         keyboardType: TextInputType.number,
         controller: _passwordController,
         decoration: const InputDecoration(
@@ -232,6 +229,15 @@ class _PasswordDialogState extends State<PasswordDialog> {
       ),
       actions: [
         TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text("Cancel", style: textTheme.bodyLarge,),
+        ),
+        TextButton(
+          style: TextButton.styleFrom(
+            backgroundColor: kPrimaryColor,
+          ),
           onPressed: () async {
             final newPwd = _passwordController.text.trim();
             if (newPwd.isEmpty) {
@@ -250,7 +256,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
               showSnack('Failed to update password', context, error: true);
             }
           },
-          child: Text("Save"),
+          child: Text("Save", style: textTheme.bodyLarge?.copyWith(color: kWhite),),
         ),
       ],
     );
