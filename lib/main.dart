@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rupee_diary/settings/security.dart';
+import './settings/security.dart';
 import './settings/bill_reminder.dart';
 import './db/database_helper.dart';
 import './home/home.dart';
@@ -8,9 +8,11 @@ import './settings/settings.dart';
 import './utility/constant.dart';
 import './home/splash.dart';
 import './services/reminder_notification.dart';
-import '/notification/notification.dart';
-import '/services/route_observer.dart';
-import 'settings/unlock.dart';
+import './notification/notification.dart';
+import './services/route_observer.dart';
+import './bank/bank.dart';
+import './settings/unlock.dart';
+import './transactions/add_transaction.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -96,6 +98,9 @@ class MyApp extends StatelessWidget {
         HomeScreen.id: (context) => HomeScreen(),
         NotificationCenterScreen.id:(context) => const NotificationCenterScreen(),
 
+        BankScreen.id: (context) => const BankScreen(),
+        AddTransaction.id: (context) => const AddTransaction(),
+
         SettingsScreen.id: (context) => SettingsScreen(),
         BillReminder.id: (context) => BillReminder(),
         SecurityScreen.id:(context) => const SecurityScreen(),
@@ -117,7 +122,7 @@ class ThemeProvider extends ChangeNotifier {
   void toggleTheme(bool isOn) {
     _themeMode = isOn ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
-  }
+  } 
 }
 
 TextTheme poppinsTextTheme(Brightness brightness) {

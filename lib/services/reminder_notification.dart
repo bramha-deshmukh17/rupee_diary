@@ -1,4 +1,3 @@
-// reminder_notification_service.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
@@ -88,7 +87,7 @@ class ReminderNotificationService {
     }
   }
 
-  /// Request permissions; show error snack if denied and [context] provided.
+  /// Request permissions show error snack if denied
   static Future<void> _requestPermissions(BuildContext? context) async {
     try {
       if (await Permission.notification.isDenied) {
@@ -280,7 +279,7 @@ class ReminderNotificationService {
       if (context != null) {
         showSnack('Reminder scheduled successfully', context);
       }
-    } catch (e, st) {
+    } catch (e) {
       if (context != null) {
         showSnack('Failed to schedule reminder: $e', context, error: true);
       }
@@ -462,7 +461,7 @@ class ReminderNotificationService {
         showSnack('Rescheduled for $d', context);
       }
 
-    } catch (e, st) {
+    } catch (e) {
   
       if (context != null) {
         showSnack(

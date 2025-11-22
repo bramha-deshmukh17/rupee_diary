@@ -116,12 +116,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
 
     return Scaffold(
-      appBar: Appbar(title: "Settings"),
+      appBar: Appbar(title: "Settings", isBackButton: true,),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const SectionTitle(title: "GENERAL"),
-
           SettingsTile(
             icon: FontAwesomeIcons.bell,
             iconColor: kPrimaryColor,
@@ -139,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: FontAwesomeIcons.fileInvoice,
             iconColor: kPrimaryColor,
             title: "Bill Reminders",
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0,),
             onTap: () {
               Navigator.pushNamed(context, BillReminder.id);
             },
@@ -164,7 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: FontAwesomeIcons.lock,
             iconColor: kPrimaryColor,
             title: "App Lock",
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
             onTap: () {
               Navigator.pushNamed(context, SecurityScreen.id);
             },
@@ -176,18 +175,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: FontAwesomeIcons.circleQuestion,
             iconColor: kPrimaryColor,
             title: "Help & Support",
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
             onTap: () {},
           ),
           SettingsTile(
             icon: FontAwesomeIcons.star,
             iconColor: kPrimaryColor,
             title: "Rate the App",
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
             onTap: () {},
           ),
 
-          const SizedBox(height: 30),
+          khBox,khBox,
           Center(
             child: Text(
               "Version 1.2.0",

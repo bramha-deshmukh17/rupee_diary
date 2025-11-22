@@ -105,9 +105,10 @@ class _UnlockState extends State<Unlock> {
                 children: [
                   Text(
                     'Enter 4-digit PIN',
-                    style: theme.textTheme.headlineSmall,
+                    style: theme.textTheme.headlineMedium,
                   ),
-                  const SizedBox(height: 24),
+                  khBox,
+                  khBox,
                   TextField(
                     controller: _pinController,
                     focusNode: _pinFocus,
@@ -125,22 +126,9 @@ class _UnlockState extends State<Unlock> {
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(4),
                     ],
-                    decoration: InputDecoration(
+                    decoration:kBaseInputDecoration.copyWith(
                       hintText: '••••',
                       errorText: _errorText,
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(color: kSecondaryColor),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: kSecondaryColor),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: kSecondaryColor,
-                          width: 2,
-                        ),
-                      ),
-                      focusColor: kSecondaryColor,
                     ),
                     onChanged: (v) {
                       if (_errorText != null) {
@@ -154,7 +142,7 @@ class _UnlockState extends State<Unlock> {
                     },
                     onSubmitted: (_) => _submit(),
                   ),
-                  const SizedBox(height: 16),
+                  khBox,
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -169,16 +157,10 @@ class _UnlockState extends State<Unlock> {
                                   color: kPrimaryColor,
                                 ),
                               )
-                              : const Text('Unlock'),
+                              : Text('Unlock', style: theme.textTheme.bodyMedium?.copyWith(color: kGrey),),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'PIN must be exactly 4 digits',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.hintColor,
-                    ),
-                  ),
+                  
                 ],
               ),
             ),

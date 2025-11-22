@@ -1,7 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter/foundation.dart';
 
-import '../model/transactions.dart'; // make sure this model exists
+import '../model/bank.dart';
+import '../model/transactions.dart';
 
 class TransactionsDao {
   final Database database;
@@ -9,27 +10,36 @@ class TransactionsDao {
 
   // TABLE CREATION
   static const createTable = '''
-    CREATE TABLE transactions(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      bank_id INTEGER NOT NULL,
-      amount REAL NOT NULL,
-      type TEXT NOT NULL,             -- credit / debit
-      date DATETIME NOT NULL,
-      category INTEGER,
-      notes TEXT,
-      FOREIGN KEY (bank_id) REFERENCES bank(id)
+    create table transactions(
+      id integer PRIMARY KEY AUTOINCREMENT,
+      bank_id integer NOT NULL,
+      amount real NOT NULL,
+      type text NOT NULL,             -- credit / debit
+      date datetime NOT NULL,
+      category text,
+      notes text,
+      foreign key (bank_id) references bank(id) on delete cascade
     );
   ''';
 
-  // 🔹 INSERT ONLY (No update / delete)
-  Future<int> insertTransaction(Map<String, dynamic> data) async {
-    return await database.insert('transactions', data);
+  // 🔹 INSERT ONLY
+  Future<int> insertTransaction(TransactionModel transaction) async {
+    return await database.insert('transactions', transaction.toMap());
   }
 
   // 🔹 GET ALL
   Future<List<TransactionModel>> getAll() async {
     final rows = await database.query('transactions', orderBy: 'date DESC');
     return rows.map(TransactionModel.fromMap).toList();
+  }
+
+  Future<bool> getTransactionByBankId(Bank b) async {
+    final rows = await database.query(
+      'transactions',
+      where: 'bank_id = ?',
+      whereArgs: [b.id!],
+    );
+    return rows.isNotEmpty;
   }
 
 
