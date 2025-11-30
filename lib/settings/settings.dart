@@ -66,7 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // Function to handle toggling a setting
+  // Function to handle toggling a settings
   Future<void> _handleToggle(String key, bool isEnabled) async {
     final newValue = isEnabled ? 'enabled' : 'disabled';
     final prev = _settings[key];

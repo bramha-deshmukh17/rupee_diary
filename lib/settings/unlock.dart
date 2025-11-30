@@ -22,7 +22,7 @@ class _UnlockState extends State<Unlock> {
 
   late final Future<String> _correctPin;
 
-  // Demo only. Replace with a secure check (e.g., from secure storage/biometrics).
+  // get pin stored in the db
   static Future<String> _getCorrectPin() async {
     try {
       final settings = await DatabaseHelper.instance.settingDao.getSettings();
@@ -49,7 +49,7 @@ class _UnlockState extends State<Unlock> {
     _pinFocus.dispose();
     super.dispose();
   }
-
+  //submit the entered pin and validate if correct navigate to home screen
    Future<void> _submit() async {
     final pin = _pinController.text;
     if (pin.length != 4) return;

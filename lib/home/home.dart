@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:intl/intl.dart';
+import '../db/database_helper.dart';
+import '../db/model/transactions.dart';
+import '../transactions/history.dart';
 import '../utility/constant.dart';
 import '../services/route_observer.dart';
 import '../transactions/add_transaction.dart';
@@ -20,20 +24,50 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   int _badgeCount = 0;
   // ignore: unused_field
   bool _alive = true;
+  double? totalBalance, totalIncome, totalExpense;
+  List<TransactionModel>? latestTransaction;
 
   @override
   void initState() {
     super.initState();
+    //get todays and tomorrows notification count to show on the  bell icon
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await ReminderNotificationService.getTodayTomorrowPendingCount();
       _refreshBadge();
     });
+    loadData();
+  }
+
+  Future<void> loadData() async {
+    try {
+      //load the total exxpense, income and money left from all bank account
+      final usage = await DatabaseHelper.instance.transactionsDao.getUsage();
+      //get last 5 transactions
+      final transactions =
+          await DatabaseHelper.instance.transactionsDao.getRecentTransactions();
+
+      if (!mounted) return;
+      setState(() {
+        totalBalance = usage['total_balance'];
+        totalIncome = usage['total_income'];
+        totalExpense = usage['total_expense'];
+        latestTransaction = transactions.isNotEmpty ? transactions : null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      showSnack('Failed to load summary data', context, error: true);
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final route = ModalRoute.of(context);
+    //here we are using route observer to know that we have came back to the home screen
+    //so that it will reload the data on the home page
+    //because there might be a scenario that we have added a transaction/reminder or deleted a transaction
+    //in this we need to update the data on home screen but it won't happen without any interaction
+    //so using routeObserveer we need not to have a explicite interaction it will automatically update the data
     if (route != null) {
       routeObserver.subscribe(this, route);
     }
@@ -49,8 +83,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void didPopNext() {
     _refreshBadge(); // refresh when notification count returning to Home
+    loadData(); // refresh the data as well
   }
 
+  //refresh the notification count on the bell icon
   Future<void> _refreshBadge() async {
     try {
       final c =
@@ -73,7 +109,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [khBox, BalanceCard(), khBox, TransactionsList()],
+            children: [
+              khBox,
+              BalanceCard(
+                balance: totalBalance ?? 0.0,
+                income: totalIncome ?? 0.0,
+                expense: totalExpense ?? 0.0,
+              ),
+              khBox,
+              // Pass the list of transactions to the list widget
+              TransactionsList(transactions: latestTransaction),
+            ],
           ),
         ),
       ),
@@ -92,8 +138,19 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 }
 
+//balance card showing the total balance left in all bank total expense and income done this month
 class BalanceCard extends StatelessWidget {
-  const BalanceCard({super.key});
+  final double balance;
+  final double income;
+  final double expense;
+
+  const BalanceCard({
+    super.key,
+    required this.balance,
+    required this.income,
+    required this.expense,
+  });
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -116,8 +173,9 @@ class BalanceCard extends StatelessWidget {
             style: textTheme.bodyLarge?.copyWith(color: kWhite),
           ),
           const SizedBox(height: 8),
+          // Display dynamic Balance
           Text(
-            "\$12,480.55",
+            "\$${balance.toStringAsFixed(2)}",
             style: textTheme.headlineMedium?.copyWith(color: kWhite),
           ),
           khBox,
@@ -126,28 +184,30 @@ class BalanceCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     FontAwesomeIcons.arrowDown,
                     color: Colors.greenAccent,
                     size: 18,
                   ),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
+                  // Display dynamic Income
                   Text(
-                    "Income\n\$4,500",
+                    "Income\n\$${income.toStringAsFixed(2)}",
                     style: textTheme.bodyMedium?.copyWith(color: kWhite),
                   ),
                 ],
               ),
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     FontAwesomeIcons.arrowUp,
                     color: Colors.redAccent,
                     size: 18,
                   ),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
+                  // Display dynamic Expense
                   Text(
-                    "Expenses\n\$1,250",
+                    "Expenses\n\$${expense.toStringAsFixed(2)}",
                     style: textTheme.bodyMedium?.copyWith(color: kWhite),
                   ),
                 ],
@@ -160,8 +220,12 @@ class BalanceCard extends StatelessWidget {
   }
 }
 
+//display list of recent transactions here
 class TransactionsList extends StatelessWidget {
-  const TransactionsList({super.key});
+  final List<TransactionModel>? transactions;
+
+  const TransactionsList({super.key, required this.transactions});
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -172,42 +236,35 @@ class TransactionsList extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text("Recent Transactions", style: textTheme.headlineMedium),
-              Text(
-                "See All",
-                style: textTheme.bodyMedium?.copyWith(color: kSecondaryColor),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, HistoryScreen.id);
+                },
+                child: Text(
+                  "See All",
+                  style: textTheme.bodyMedium?.copyWith(color: kSecondaryColor),
+                ),
               ),
             ],
           ),
           khBox,
           Expanded(
-            child: ListView(
-              children: const [
-                TransactionTile(
-                  icon: FontAwesomeIcons.bagShopping,
-                  iconColor: Colors.pink,
-                  title: "Shopping",
-                  subtitle: "Zara, New Collection",
-                  amount: "-\$120.00",
-                  amountColor: Colors.red,
-                ),
-                TransactionTile(
-                  icon: FontAwesomeIcons.wallet,
-                  iconColor: Colors.green,
-                  title: "Salary",
-                  subtitle: "Monthly Payment",
-                  amount: "+\$2,500.00",
-                  amountColor: Colors.green,
-                ),
-                TransactionTile(
-                  icon: FontAwesomeIcons.youtube,
-                  iconColor: Colors.orange,
-                  title: "Subscription",
-                  subtitle: "Netflix Premium",
-                  amount: "-\$15.99",
-                  amountColor: Colors.red,
-                ),
-              ],
-            ),
+            child:
+                (transactions == null || transactions!.isEmpty)
+                    ? Center(
+                      child: Text(
+                        "No transactions yet",
+                        style: textTheme.bodyMedium?.copyWith(color: kGrey),
+                      ),
+                    )
+                    : ListView.builder(
+                      itemCount: transactions!.length,
+                      itemBuilder: (context, index) {
+                        final data = transactions![index];
+                        // Simply pass the model object
+                        return TransactionTile(transaction: data);
+                      },
+                    ),
           ),
         ],
       ),
@@ -215,45 +272,125 @@ class TransactionsList extends StatelessWidget {
   }
 }
 
+//each transaction tile design
 class TransactionTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final String amount;
-  final Color amountColor;
+  final TransactionModel transaction;
 
-  const TransactionTile({
-    super.key,
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.amount,
-    required this.amountColor,
-  });
+  const TransactionTile({super.key, required this.transaction});
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return Card(
-      elevation: 5.0,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: iconColor.withOpacity(0.1),
-          child: Icon(icon, color: iconColor),
-        ),
-        title: Text(title, style: textTheme.bodyLarge),
-        subtitle: Text(
-          subtitle,
-          style: textTheme.bodyMedium?.copyWith(color: kGrey),
-        ),
-        trailing: Text(
-          amount,
-          style: textTheme.bodyLarge?.copyWith(color: amountColor),
+
+    final type = transaction.type;
+    final amount = transaction.amount;
+    final notes = transaction.notes;
+    final category = transaction.category;
+    final bankName = transaction.bankName;
+    final DateTime date = transaction.date;
+
+    final colorFor = (type == 'income' || type == 'borrow') ? kGreen : kRed;
+
+    return GestureDetector(
+      onTap: showMyDialog('Note', notes, textTheme, context),
+      child: Card(
+        elevation: 5,
+        margin: const EdgeInsets.symmetric(vertical: 6.0),
+        child: ListTile(
+          contentPadding: EdgeInsets.all(10.0),
+          leading: GestureDetector(
+            onTap: showMyDialog('Category', category, textTheme, context),
+            child: CircleAvatar(
+              backgroundColor: colorFor,
+              child: Icon(
+                // Ensure categoryIcons is imported from your constants or define a fallback
+                categoryIcons[category] ?? FontAwesomeIcons.question,
+                size: 15,
+                color: kWhite,
+              ),
+            ),
+          ),
+          title: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('$bankName ', style: textTheme.bodyLarge),
+                  if (notes != null && notes.isNotEmpty)
+                    Icon(
+                      FontAwesomeIcons.solidMessage,
+                      size: 10,
+                      color: textTheme.bodySmall?.color,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                DateFormat('dd/MM/yyyy • hh:mm:ss').format(date),
+                style: textTheme.bodySmall,
+              ),
+            ],
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                (type == 'income' || type == 'borrow')
+                    ? '+${amount.toStringAsFixed(2)}'
+                    : '-${amount.toStringAsFixed(2)}',
+                style: textTheme.bodyLarge?.copyWith(
+                  color: colorFor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              // If your model has a balance field, use it here.
+              // Otherwise, you might want to hide this Text widget.
+              Text(
+                // transaction.remainingBalance.toStringAsFixed(2),
+                "Balance", // Placeholder if field is missing in model
+                style: textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  // Helper method to show dialog to show notes and category of transaction in alert dialog
+  GestureTapCallback? showMyDialog(
+    String title,
+    String? message,
+    TextTheme textTheme,
+    BuildContext context,
+  ) {
+    if (message == null || message.isEmpty) {
+      return null;
+    }
+    return () {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(title, style: textTheme.bodyLarge),
+            content: Text(message, style: textTheme.bodyMedium),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text(
+                  'Close',
+                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    };
   }
 }

@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../bank/bank.dart';
 import '../db/database_helper.dart';
 import '../db/model/bank.dart';
-import '../db/model/transactions.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
 import '../utility/snack.dart';
@@ -22,7 +21,7 @@ class _AddTransactionState extends State<AddTransaction> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
   double _amount = 0.0;
-  final List<String> _types = const ['Expense', 'Income', 'Lent'];
+  final List<String> _types = const ['Expense', 'Income', 'Lend', 'Borrow'];
   int _typeIndex = 0;
 
   late String _selectedCategory = categoryIcons.keys.first;
@@ -44,6 +43,7 @@ class _AddTransactionState extends State<AddTransaction> {
     super.dispose();
   }
 
+  //date picker for the transaction date
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
@@ -72,13 +72,14 @@ class _AddTransactionState extends State<AddTransaction> {
     });
   }
 
+  //load banks data from the db and also default selected bank
   Future<void> _loadBanks() async {
     try {
       final data = await DatabaseHelper.instance.bankDao.getBanks();
       if (!mounted) return;
       setState(() {
         _banks = data;
-        // Prefer default bank, else first
+        // Prefer default bank, else first else creeate a non null dummy bank to avoid app crash due to null id
         final def = _banks.firstWhere(
           (b) => (b.isDefault ?? false),
           orElse:
@@ -104,8 +105,12 @@ class _AddTransactionState extends State<AddTransaction> {
     return double.tryParse(raw) ?? 0;
   }
 
+  //save data to the db of the transaction
+  //if no bank is created prompt to create bank first
+  //else save transaction and update bank balance
   Future<void> _save() async {
     final textTheme = Theme.of(context).textTheme;
+    List<Bank> banks;
     // Basic client-side validation
     _amount = _extractAmount();
     if (_amount <= 0.0) {
@@ -114,288 +119,267 @@ class _AddTransactionState extends State<AddTransaction> {
     }
 
     try {
-      final banks = await DatabaseHelper.instance.bankDao.getBanks();
+      banks = await DatabaseHelper.instance.bankDao.getBanks();
       if (banks.isEmpty) {
         if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder:
-              (_) => AlertDialog(
-                title: Text('No Banks Found', style: textTheme.bodyLarge),
-                content: Text(
-                  'Add a bank before adding transactions.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('Cancel', style: textTheme.bodyMedium),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, BankScreen.id);
-                    },
-                    
-                    child: Text(
-                      'Add Bank',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: kPrimaryColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+        addBankDialog(
+          context,
+          title: 'No banks found',
+          message: 'Please add a bank account before adding transactions.',
+          textTheme: textTheme,
         );
         return;
       }
 
-      final model = TransactionModel(
-        bankId: _selectedBankId!,
-        amount: _amount,
-        type: _types[_typeIndex].toLowerCase(),
-        date: _selectedDate,
-        category: _selectedCategory,
-        notes:
-            _notesController.text.trim().isEmpty
-                ? null
-                : _notesController.text.trim(),
-      );
-
-      // Adjust if DAO expects a Map:
-      await DatabaseHelper.instance.transactionsDao.insertTransaction(model);
-      await DatabaseHelper.instance.transactionsDao.debugPrintAllModels();
-      final bankId = _selectedBankId!;
-      double delta;
+      //bank's balance after transaction
+      double balance =
+          banks.firstWhere((b) => b.id == _selectedBankId!).balance!;
       switch (_types[_typeIndex].toLowerCase()) {
         case 'income':
-          delta = _amount; // add funds
+          balance += _amount; // add funds
           break;
         case 'expense':
-        case 'lent':
-          delta = -_amount; // subtract funds
+          balance -= _amount; // subtract funds
+          break;
+        case 'borrow':
+          balance += _amount; // add funds
+          break;
+        case 'lend':
+          balance -= _amount; // subtract funds
           break;
         default:
-          delta = 0;
+          balance = balance;
       }
+      
+      final data = <String, dynamic>{
+        'bank_Id': _selectedBankId,
+        'amount': _amount,
+        'balance': balance,
+        'type': _types[_typeIndex].toLowerCase(),
+        'date': _selectedDate.toIso8601String(),
+        'category': (_types[_typeIndex].toLowerCase() != 'expense')
+        ? 'Others'
+        : _selectedCategory,
+        'notes': _notesController.text.trim().isEmpty
+        ? null
+        : _notesController.text.trim(),
+      };
+      //add transaction to the db
+      await DatabaseHelper.instance.transactionsDao.insertTransaction(data);
 
-      if (delta != 0) {
-        await DatabaseHelper.instance.bankDao.updateBank(bankId, delta);
-      }
       if (!mounted) return;
       showSnack('Transaction added', context);
       Navigator.pop(context);
     } catch (e) {
-      showSnack('Failed to add transaction $e', context, error: true);
+      showSnack('Failed to add transaction', context, error: true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: Appbar(title: 'Add Transaction', isBackButton: true),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 4),
-              Center(
-                child: Text(
-                  'Amount',
-                  style: textTheme.titleSmall?.copyWith(color: kGrey),
-                ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 4),
+            Center(
+              child: Text(
+                'Amount',
+                style: textTheme.titleSmall?.copyWith(color: kGrey),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: false,
-                      ),
-                      textAlign: TextAlign.center,
-                      style: textTheme.displayLarge,
-                      cursorColor: kSecondaryColor,
-                      decoration: const InputDecoration(
-                        hintText: '₹ 0.00',
-                        border: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      onChanged: (value) {
-                        // sanitize & format
-                        validateAmt(value);
-                        // store numeric amount
-                        _amount = _extractAmount();
-                      },
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: false,
                     ),
-                  ),
-                ],
-              ),
-              khBox,
-
-              // Segmented type selector
-              Center(
-                child: Container(
-                  child: ToggleButtons(
-                    isSelected: List.generate(
-                      _types.length,
-                      (i) => i == _typeIndex,
+                    textAlign: TextAlign.center,
+                    style: textTheme.displayLarge,
+                    cursorColor: kSecondaryColor,
+                    decoration: const InputDecoration(
+                      hintText: '₹ 0.00',
+                      border: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
                     ),
-                    onPressed: (i) => setState(() => _typeIndex = i),
-                    borderRadius: BorderRadius.circular(16),
-                    fillColor: kPrimaryColor,
-                    selectedBorderColor: kPrimaryColor,
-                    constraints: const BoxConstraints(
-                      minHeight: 36,
-                      minWidth: 90,
-                    ),
-                    children:
-                        _types
-                            .map(
-                              (t) => Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                ),
-                                child: Text(t, style: textTheme.bodyLarge),
-                              ),
-                            )
-                            .toList(),
-                  ),
-                ),
-              ),
-              khBox,
-
-              // Category selector card
-              _TileCard(
-                icon:
-                    categoryIcons[_selectedCategory] ?? FontAwesomeIcons.shapes,
-                title: 'Category',
-                trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCategory,
-                    items:
-                        categoryIcons.keys
-                            .map(
-                              (c) => DropdownMenuItem<String>(
-                                value: c,
-                                child: Text(c),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (v) {
-                      if (v != null) setState(() => _selectedCategory = v);
+                    onChanged: (value) {
+                      // sanitize & format
+                      validateAmt(value);
+                      // store numeric amount
+                      _amount = _extractAmount();
                     },
                   ),
                 ),
-              ),
-              khBox,
+              ],
+            ),
+            khBox,
 
-              //Bank selections card
-              _TileCard(
-                icon: FontAwesomeIcons.bank,
-                title: 'Bank',
-                trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _selectedBankId,
-                    hint: const Text('Select'),
-                    items:
-                        _banks
-                            .map(
-                              (b) => DropdownMenuItem<int>(
-                                value: b.id,
-                                child: Text(
-                                  b.name ?? 'Unnamed',
-                                  style: textTheme.bodyLarge,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (v) {
-                      if (v != null) setState(() => _selectedBankId = v);
-                    },
+            // Segmented type selector
+            Center(
+              child: Container(
+                child: ToggleButtons(
+                  isSelected: List.generate(
+                    _types.length,
+                    (i) => i == _typeIndex,
                   ),
+                  onPressed: (i) => setState(() => _typeIndex = i),
+                  borderRadius: BorderRadius.circular(16),
+                  fillColor: kPrimaryColor,
+                  selectedBorderColor: kPrimaryColor,
+                  constraints: const BoxConstraints(
+                    minHeight: 36,
+                    minWidth: 90,
+                  ),
+                  children:
+                      _types
+                          .map(
+                            (t) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                              ),
+                              child: Text(t, style: textTheme.bodyLarge),
+                            ),
+                          )
+                          .toList(),
                 ),
               ),
-              khBox,
+            ),
+            khBox,
 
-              // Date selector card
-              _TileCard(
-                icon: FontAwesomeIcons.calendar,
-                title: 'Date & Time',
-                trailing: InkWell(
-                  onTap: () async {
-                    _pickDate();
+            // Category selector card
+            if(_typeIndex==0)
+            _TileCard(
+              icon: categoryIcons[_selectedCategory] ?? FontAwesomeIcons.shapes,
+              title: 'Category',
+              trailing: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedCategory,
+                  items:
+                      categoryIcons.keys
+                          .map(
+                            (c) => DropdownMenuItem<String>(
+                              value: c,
+                              child: Text(c),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _selectedCategory = v);
                   },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          DateFormat(
-                            'dd/MM/yyyy • hh:mm:ss a',
-                          ).format(_selectedDate),
-                          style: textTheme.bodyLarge,
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                    ),
+                ),
+              ),
+            ),
+            khBox,
+
+            //Bank selections card
+            _TileCard(
+              icon: FontAwesomeIcons.bank,
+              title: 'Bank',
+              trailing: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: _selectedBankId,
+                  hint: const Text('Select'),
+                  items:
+                      _banks.map((b) {
+                        final name = b.name ?? 'Unnamed';
+                        final display =
+                            name.length > 10
+                                ? '${name.substring(0, 10)}...'
+                                : name;
+                        return DropdownMenuItem<int>(
+                          value: b.id,
+                          child: Text(display, style: textTheme.bodyLarge),
+                        );
+                      }).toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _selectedBankId = v);
+                  },
+                ),
+              ),
+            ),
+            khBox,
+
+            // Date selector card
+            _TileCard(
+              icon: FontAwesomeIcons.calendar,
+              title: 'Date & Time',
+              trailing: InkWell(
+                onTap: () async {
+                  _pickDate();
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateFormat(
+                          'dd/MM/yyyy • hh:mm:ss a',
+                        ).format(_selectedDate),
+                        style: textTheme.bodyLarge,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                   ),
                 ),
               ),
-              khBox,
+            ),
+            khBox,
 
-              // Notes
-              TextField(
-                controller: _notesController,
-                minLines: 3,
-                maxLines: 5,
-                cursorColor: kSecondaryColor,
-                decoration: kBaseInputDecoration.copyWith(
-                  labelText: 'Notes... (e.g., Lunch bill)',
-                ),
-              ),
+            // Notes
+            TextField(
+              controller: _notesController,
+              minLines: 3,
+              maxLines: 5,
+              cursorColor: kSecondaryColor,
+              decoration: kBaseInputDecoration.copyWith(labelText: 'Notes...'),
+            ),
 
-              khBox, khBox,
+            khBox, khBox,
 
-              // CTA
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 1,
+            // CTA
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text('Add Transaction', style: textTheme.bodyLarge?.copyWith(color: kWhite)),
+                  elevation: 1,
+                ),
+                child: Text(
+                  'Add Transaction',
+                  style: textTheme.bodyLarge?.copyWith(color: kWhite),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );
   }
 
+  //valiadate the transaction amount input field and format it in indian currency format
   void validateAmt(String value) {
     // Remove everything except digits and dot
     final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
@@ -447,8 +431,46 @@ class _AddTransactionState extends State<AddTransaction> {
       });
     }
   }
+
+  //if bank not found show this dialog to add bank first
+  void addBankDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required TextTheme textTheme,
+  }) async {
+    return await showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: Text('No Banks Found', style: textTheme.bodyLarge),
+            content: Text(
+              'Add a bank before adding transactions.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel', style: textTheme.bodyMedium),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, BankScreen.id);
+                },
+
+                child: Text(
+                  'Add Bank',
+                  style: textTheme.bodyMedium?.copyWith(color: kPrimaryColor),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
 }
 
+//tile card widget for various selections
 class _TileCard extends StatelessWidget {
   final IconData icon;
   final String title;

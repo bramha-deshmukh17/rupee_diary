@@ -25,7 +25,7 @@ class SettingDao {
       ('password', null);
     ''';
 
-  // UPDATE A SETTING USING MODEL
+  // update settings
   Future<void> updateSetting(Setting setting) async {
     final result = await db!.update(
       'settings',
@@ -34,7 +34,7 @@ class SettingDao {
       whereArgs: [setting.settingsKey],
     );
 
-    // If no row was updated → insert new one
+    // If no row was updated insert new one
     if (result == 0) {
       await db!.insert(
         'settings',
@@ -44,7 +44,7 @@ class SettingDao {
     }
   }
 
-  // GET ALL SETTINGS AS A MAP
+  // get all settings
   Future<List<Setting>> getSettings() async {
     final List<Map<String, dynamic>> maps = await db!.query('settings');
     return maps.map((map) => Setting.fromMap(map)).toList();

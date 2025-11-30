@@ -4,18 +4,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8c336f91-903b-4953-ace7-32a40197f63d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/lib/db/database_helper.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/db/database_helper.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/db/model/bill_reminder.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/db/model/bill_reminder.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/home/splash.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/home/splash.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/main.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/notification/notification.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/notification/notification.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/services/reminder_notification.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/reminder_notification.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/settings/bill_reminder.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/settings/bill_reminder.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/settings/edit_add_reminder.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/settings/edit_add_reminder.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/settings/settings.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/settings/settings.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/utility/constant.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/utility/constant.dart" afterDir="false" />
-    </list>
+    <list default="true" id="8c336f91-903b-4953-ace7-32a40197f63d" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

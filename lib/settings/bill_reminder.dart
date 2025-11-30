@@ -26,6 +26,7 @@ class _BillReminderState extends State<BillReminder> {
     _loadReminders();
   }
 
+  //load all the available bill reminders from the database
   Future<void> _loadReminders() async {
     setState(() => _isLoading = true);
     try {
@@ -42,6 +43,7 @@ class _BillReminderState extends State<BillReminder> {
     }
   }
 
+  //delete a bill reminder
   Future<void> _deleteReminder(BillReminderModel reminder) async {
     try {
       if (reminder.id == null) {
@@ -61,6 +63,7 @@ class _BillReminderState extends State<BillReminder> {
       await DatabaseHelper.instance.billReminderDao.deleteBillReminder(
         reminder.id!,
       );
+      //reload the reminders data after deletion
       await _loadReminders();
       if (!mounted) return;
       showSnack('Reminder deleted', context);
@@ -70,12 +73,15 @@ class _BillReminderState extends State<BillReminder> {
     }
   }
 
+  //show add edit dialog has onSave attribut when called implicitely call the function which is passed as parameter
+  //here that function is loadreminder
   void _showAddEditDialog([BillReminderModel? reminder]) {
     showDialog(
       context: context,
       builder:
           (context) => AddEditReminderDialog(
             reminder: reminder,
+            //wheneever onSave() is called by AddEditReminderDialog it will call _loadReminders function to reload the data from db
             onSave: () {
               _loadReminders();
             },
@@ -113,6 +119,7 @@ class _BillReminderState extends State<BillReminder> {
     );
   }
 
+  //if no reminders added then show this widget
   Widget _buildEmptyState() {
     final textTheme = TextTheme.of(context);
 
@@ -138,6 +145,7 @@ class _BillReminderState extends State<BillReminder> {
     );
   }
 
+  //show all the list of reminders in a card format
   Widget _buildReminderCard(BillReminderModel reminder) {
     final iconData = categoryIcons[reminder.category] ?? Icons.category;
     final textTheme = TextTheme.of(context);
@@ -208,6 +216,7 @@ class _BillReminderState extends State<BillReminder> {
   }
 }
 
+//reminder add edit dialog
 class AddEditReminderDialog extends StatefulWidget {
   final BillReminderModel? reminder;
   final VoidCallback onSave;
@@ -284,7 +293,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                   onFieldSubmitted: (val) {
                     FocusScope.of(context).requestFocus(_amountFocusNode);
                   },
-                  decoration: kBaseInputDecoration.copyWith(
+                  decoration: kBaseOutlineDecoration.copyWith(
                     labelText: 'Bill Title*',
                   ),
                   style: textTheme.bodyLarge,
@@ -304,7 +313,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                   onFieldSubmitted: (val) {
                     FocusScope.of(context).requestFocus(_categoryNode);
                   },
-                  decoration: kBaseInputDecoration.copyWith(
+                  decoration: kBaseOutlineDecoration.copyWith(
                     labelText: 'Amount*',
                     prefixText: '₹',
                   ),
@@ -325,7 +334,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                   style: textTheme.bodyLarge,
                   initialValue: _selectedCategory,
                   focusNode: _categoryNode,
-                  decoration: kBaseInputDecoration.copyWith(
+                  decoration: kBaseOutlineDecoration.copyWith(
                     labelText: 'Category',
                     prefixIcon: Icon(categoryIcons[_selectedCategory]),
                   ),
@@ -369,7 +378,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       border: Border.all(color: kGrey),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -403,7 +412,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                 TextFormField(
                   controller: _notesController,
                   focusNode: _notesFocusNode,
-                  decoration: kBaseInputDecoration.copyWith(
+                  decoration: kBaseOutlineDecoration.copyWith(
                     labelText: 'Notes (Optional)',
                   ),
                   style: textTheme.bodyLarge,
@@ -441,6 +450,8 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
     );
   }
 
+  //function to get data and save/update in db
+  //also schedule the reminder notification for the bill reminder
   Future<void> _saveReminder() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -529,6 +540,8 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
         if (mounted) showSnack('Reminder updated', context);
       }
 
+      //when saved/updated successfully callback will call save method from invoking class 
+      //i.e. BillReminder class to reload the data from db using loadreminder function
       widget.onSave();
       if (!mounted) return;
       Navigator.pop(context);

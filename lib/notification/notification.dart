@@ -26,6 +26,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     _loadPendingNotifications();
   }
 
+  //here we will load the data of pending notification i.e. notification for reminder which are yet to be marked as paid
+  //by filtering it using due date of the reminder 
   Future<void> _loadPendingNotifications() async {
     setState(() => _isLoading = true);
 
@@ -62,6 +64,10 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     }
   }
 
+  //here the bill reminder will be marked as paid
+  //and if it is recurring then we will recalculte the next due date and make it again as unpaid
+  //along with this we are calling notification service to have a scheduled notification for the reminder
+  //if it is not a recurring reminder then the all notification for that bill will be cancelled
   Future<void> _markAsPaid(BillReminderModel r) async {
     if (r.id == null) {
       showSnack('Invalid reminder (missing id)', context, error: true);
@@ -77,7 +83,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       return;
     }
 
-    //Notifications (don’t block success if this fails)
+    //Notifications 
     try {
       if (r.isRecurring == true) {
         // Fetch the latest reminder row from DB (important)
@@ -111,7 +117,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       );
     }
 
-    //Reload UI
+    //Reload UI after marking the bill as paid to have fresh list of notification which are unpaid
     try {
       await _loadPendingNotifications();
       if (!mounted) return;

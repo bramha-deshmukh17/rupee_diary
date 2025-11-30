@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import '../db/database_helper.dart';
 import '../db/model/setting.dart';
-import '../main.dart' show ThemeProvider;
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
 import '../utility/snack.dart';
@@ -21,7 +19,6 @@ class SecurityScreen extends StatefulWidget {
 class _SecurityScreenState extends State<SecurityScreen> {
   Map<String, String> _settings = {};
   bool _isLoading = true;
-  ThemeProvider get themeProvider => context.read<ThemeProvider>();
 
   @override
   void initState() {
@@ -50,18 +47,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
         );
         _isLoading = false;
       });
-
-      // Apply the saved theme setting (best-effort)
-      try {
-        Provider.of<ThemeProvider>(
-          context,
-          listen: false,
-        ).toggleTheme(_settings['theme'] == 'enabled');
-      } catch (e) {
-        if (mounted) {
-          showSnack('Failed to apply theme', context, error: true);
-        }
-      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -70,6 +55,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
   }
 
   // Function to handle toggling a setting
+  //here we handle the app lock toggle
   Future<void> _handleToggle(String key, bool isEnabled) async {
     final String newValue = isEnabled ? 'enabled' : 'disabled';
     final prev = _settings[key];
@@ -99,11 +85,13 @@ class _SecurityScreenState extends State<SecurityScreen> {
     }
   }
 
+  // Function to show the add/edit password dialog
   void _showAddEditDialog() {
     showDialog(
       context: context,
       builder:
           (context) => PasswordDialog(
+            //whenever we save the password we reload the settings
             onSave: () {
               _loadSettings();
             },
@@ -122,7 +110,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     }
 
     return Scaffold(
-      appBar: Appbar(title: "Security", isBackButton: true,),
+      appBar: Appbar(title: "Security", isBackButton: true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -136,10 +124,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ListTile(
-                title: Text(
-                  'App Lock',
-                  style: textTheme.bodyLarge,
-                ),
+                title: Text('App Lock', style: textTheme.bodyLarge),
                 trailing: Switch(
                   value: _settings['authentication'] == 'enabled',
                   onChanged: (val) => {_handleToggle('authentication', val)},
@@ -159,20 +144,19 @@ class _SecurityScreenState extends State<SecurityScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              child:ListTile(
-                      title: Text(
-                        'Set PIN',
-                        style: textTheme.bodyLarge,
-                      ),
-                      trailing: const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: kGrey,
-                      ),
-                      onTap: () {
-                        _settings['authentication'] == 'enabled' ? _showAddEditDialog() : null;
-                      },
-                    ),
+              child: ListTile(
+                title: Text('Set PIN', style: textTheme.bodyLarge),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: kGrey,
+                ),
+                onTap: () {
+                  _settings['authentication'] == 'enabled'
+                      ? _showAddEditDialog()
+                      : null;
+                },
+              ),
             ),
           ),
         ],
@@ -184,8 +168,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 class PasswordDialog extends StatefulWidget {
   final VoidCallback onSave;
 
-  const PasswordDialog({Key? key, required this.onSave})
-    : super(key: key);
+  const PasswordDialog({Key? key, required this.onSave}) : super(key: key);
 
   @override
   _PasswordDialogState createState() => _PasswordDialogState();
@@ -214,8 +197,18 @@ class _PasswordDialogState extends State<PasswordDialog> {
         style: textTheme.bodyLarge,
         keyboardType: TextInputType.number,
         controller: _passwordController,
+        autofocus: true,
+        textAlign: TextAlign.center,
+        obscureText: true,
+        enableSuggestions: false,
+        autocorrect: false,
+        cursorColor: kSecondaryColor,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
+        ],
         decoration: const InputDecoration(
-          labelText: "New PIN",
+          hintText: "••••",
           enabledBorder: UnderlineInputBorder(
             borderSide: BorderSide(color: kSecondaryColor),
           ),
@@ -223,42 +216,44 @@ class _PasswordDialogState extends State<PasswordDialog> {
             borderSide: BorderSide(color: kSecondaryColor, width: 2),
           ),
         ),
-        obscureText: true,
         maxLength: 4,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       ),
       actions: [
         TextButton(
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: Text("Cancel", style: textTheme.bodyLarge,),
+          child: Text("Cancel", style: textTheme.bodyLarge),
         ),
         TextButton(
-          style: TextButton.styleFrom(
-            backgroundColor: kPrimaryColor,
+          style: TextButton.styleFrom(backgroundColor: kPrimaryColor),
+          onPressed: savePin,
+          child: Text(
+            "Save",
+            style: textTheme.bodyLarge?.copyWith(color: kWhite),
           ),
-          onPressed: () async {
-            final newPwd = _passwordController.text.trim();
-            if (newPwd.isEmpty) {
-              Navigator.of(context).pop();
-              return;
-            }
-            try {
-              await DatabaseHelper.instance.settingDao.updateSetting(
-                Setting(settingsKey: 'password', settingsValue: newPwd),
-              );
-              widget.onSave();
-              if (mounted) showSnack('New PIN saved', context);
-              if (mounted) Navigator.of(context).pop();
-            } catch (e) {
-              if (!mounted) return;
-              showSnack('Failed to update password', context, error: true);
-            }
-          },
-          child: Text("Save", style: textTheme.bodyLarge?.copyWith(color: kWhite),),
         ),
       ],
     );
+  }
+
+  //validate the pain and save to db
+  void savePin() async {
+    final newPwd = _passwordController.text.trim();
+    if (newPwd.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    try {
+      await DatabaseHelper.instance.settingDao.updateSetting(
+        Setting(settingsKey: 'password', settingsValue: newPwd),
+      );
+      widget.onSave();
+      if (mounted) showSnack('New PIN saved', context);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      showSnack('Failed to update password', context, error: true);
+    }
   }
 }

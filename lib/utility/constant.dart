@@ -24,36 +24,77 @@ const Icon kBackArrow = Icon(
 
 //Category icons
 final List<String> categories = [
+  'Food',
+  'Fuel',
+  'Transport',
+  'Grocery',
   'Utilities',
   'Rent/Mortgage',
+  'Medical',
+  'Education',
+  'Shopping',
+  'Entertainment',
+  'Personal Care',
   'Insurance',
   'Phone/Internet',
   'Subscription',
   'Loan Payment',
   'Credit Card',
-  'Other',
+  'Clothes',
+  'Travel',
+  'Bills',
+  'Gifts',
+  'Others',
 ];
 
 final Map<String, IconData> categoryIcons = {
+  'Food': FontAwesomeIcons.bowlRice,
+  'Fuel': FontAwesomeIcons.gasPump,
+  'Transport': FontAwesomeIcons.bus,
+  'Grocery': FontAwesomeIcons.basketShopping,
   'Utilities': FontAwesomeIcons.receipt,
   'Rent/Mortgage': FontAwesomeIcons.house,
-  'Insurance': FontAwesomeIcons.shieldHalved,
+  'Medical': FontAwesomeIcons.briefcaseMedical,
+  'Education': FontAwesomeIcons.graduationCap,
+  'Shopping': FontAwesomeIcons.bagShopping,
+  'Entertainment': FontAwesomeIcons.film,
+  'Personal Care': FontAwesomeIcons.spa,
+  'Insurance': FontAwesomeIcons.shield,
   'Phone/Internet': FontAwesomeIcons.wifi,
   'Subscription': FontAwesomeIcons.repeat,
   'Loan Payment': FontAwesomeIcons.landmark,
   'Credit Card': FontAwesomeIcons.creditCard,
-  'Other': FontAwesomeIcons.shapes,
+  'Clothes': FontAwesomeIcons.shirt,
+  'Travel': FontAwesomeIcons.plane,
+  'Bills': FontAwesomeIcons.fileInvoice,
+  'Gifts': FontAwesomeIcons.gift,
+  'Others': FontAwesomeIcons.question,
 };
 
-// ---- Input border/decoration constants ----
-const kOutlineBorder = OutlineInputBorder(
+// UnderlineInputBorder
+const kOutlineBorder = UnderlineInputBorder(
   borderSide: BorderSide(color: kSecondaryColor),
 );
-const kFocusedOutlineBorder = OutlineInputBorder(
+const kFocusedOutlineBorder = UnderlineInputBorder(
   borderSide: BorderSide(color: kSecondaryColor, width: 2),
 );
 
 const kBaseInputDecoration = InputDecoration(
   border: kOutlineBorder,
   focusedBorder: kFocusedOutlineBorder,
+);
+
+// OutlineInputBorder 
+const kOutlineInputBorder = OutlineInputBorder(
+  borderSide: BorderSide(color: kSecondaryColor),
+  borderRadius: BorderRadius.all(Radius.circular(8.0)),
+);
+const kFocusedOutlineInputBorder = OutlineInputBorder(
+  borderSide: BorderSide(color: kSecondaryColor, width: 2),
+  borderRadius: BorderRadius.all(Radius.circular(8.0)),
+);
+
+final kBaseOutlineDecoration = InputDecoration(
+  border: kOutlineInputBorder,
+  focusedBorder: kFocusedOutlineInputBorder,
 );
