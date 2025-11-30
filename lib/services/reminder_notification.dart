@@ -7,8 +7,11 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
+import '../notification/notification.dart';
 import '../utility/snack.dart';
+import 'route_observer.dart';
 
+// Service to manage reminder notifications
 class ReminderNotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -80,9 +83,6 @@ class ReminderNotificationService {
       final enabled = (map['notifications'] ?? 'enabled') == 'enabled';
       return enabled;
     } catch (e) {
-      debugPrint(
-        'ReminderNotificationService: _notificationsEnabled error: $e',
-      );
       return true;
     }
   }
@@ -150,8 +150,18 @@ class ReminderNotificationService {
       final notifId = id * 10 + (isToday ? 1 : 0);
       await _notificationsPlugin.cancel(notifId);
     } else {
-      // Regular tap: you could navigate to app screen here
-      debugPrint('ReminderNotificationService: notification tap (default)');
+      // open NotificationCenterScreen using global navigator key
+      // guard in case app isn't yet ready
+      final nav = navigatorKey.currentState;
+      if (nav != null) {
+        nav.pushNamed(NotificationCenterScreen.id);
+      } else {
+        // fallback: try to get a context and use Navigator
+        final ctx = navigatorKey.currentContext;
+        if (ctx != null) {
+          Navigator.of(ctx).pushNamed(NotificationCenterScreen.id);
+        }
+      }
     }
   }
 
@@ -425,7 +435,6 @@ class ReminderNotificationService {
       }
 
       if (reminder.id == null) {
-      
         if (context != null)
           showSnack('Invalid reminder', context, error: true);
         return;
@@ -460,9 +469,7 @@ class ReminderNotificationService {
         final d = nextDate.toLocal().toIso8601String().split('T').first;
         showSnack('Rescheduled for $d', context);
       }
-
     } catch (e) {
-  
       if (context != null) {
         showSnack(
           'Failed to reschedule recurring reminder',

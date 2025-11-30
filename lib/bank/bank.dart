@@ -25,6 +25,7 @@ class _BankScreenState extends State<BankScreen> {
     _loadBanks();
   }
 
+  //loading bank data from db
   Future<void> _loadBanks() async {
     setState(() => _loading = true);
     try {
@@ -40,6 +41,7 @@ class _BankScreenState extends State<BankScreen> {
     }
   }
 
+  //deleting bank
   void deleteBank(BuildContext context, Bank b) async {
     try {
       await DatabaseHelper.instance.bankDao.deleteBank(b);
@@ -52,6 +54,9 @@ class _BankScreenState extends State<BankScreen> {
     }
   }
 
+  //bank page to show list of banks
+  //long press to delete a bank
+  
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -117,6 +122,7 @@ class _BankScreenState extends State<BankScreen> {
                                   ),
                                 ],
                               ),
+                              //icon button to make a bank default while adding a transaction
                               trailing: IconButton(
                                 tooltip:
                                     isDefault
@@ -141,7 +147,10 @@ class _BankScreenState extends State<BankScreen> {
                   ),
                 ],
               ),
+      //bottom app bar
       bottomNavigationBar: BottomBar(currentIndex: 3),
+      
+      //floating action button to add bank
       floatingActionButton: FloatingActionButton(
         backgroundColor: kPrimaryColor,
         foregroundColor: kWhite,
@@ -159,6 +168,8 @@ class _BankScreenState extends State<BankScreen> {
     );
   }
 
+  //delete bank dialog with conditions
+  //taking context and bank data and loadBanks function as parameters 
   GestureLongPressCallback deleteBankDialog(
     BuildContext context,
     Bank b,
@@ -173,6 +184,7 @@ class _BankScreenState extends State<BankScreen> {
       String message;
       bool canDelete;
 
+      //message in dialog according to certain scenarios
       if (b.isDefault == true && hasTx) {
         // Scenario 1: default + transactions
         message =
@@ -230,6 +242,7 @@ class _BankScreenState extends State<BankScreen> {
     };
   }
 
+  //method to make a bank account default
   void changeDefaultBank(Bank b, bool isDefault, BuildContext context) async {
     if (isDefault) return;
     try {
@@ -242,6 +255,7 @@ class _BankScreenState extends State<BankScreen> {
   }
 }
 
+//add bank dialog appearing after clicking floating action button
 class AddBank extends StatefulWidget {
   final VoidCallback onSave;
 
@@ -252,6 +266,7 @@ class AddBank extends StatefulWidget {
 }
 
 class _AddBankState extends State<AddBank> {
+  //controllers and focus nodes
   final TextEditingController _bankNameController = TextEditingController();
   final TextEditingController _initialBalanceController =
       TextEditingController();
@@ -271,6 +286,7 @@ class _AddBankState extends State<AddBank> {
     super.dispose();
   }
 
+  //validate the balace input to allow only numbers and decimal point
   void balanceValidate(String value) {
     String cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
 
@@ -298,6 +314,7 @@ class _AddBankState extends State<AddBank> {
     }
   }
 
+  //function to add bank to db using alert box
   void addBank(BuildContext context) async {
     String name = _bankNameController.text.trim();
     String balanceText = _initialBalanceController.text.trim();
@@ -340,7 +357,7 @@ class _AddBankState extends State<AddBank> {
         child: Column(
           children: [
             TextField(
-              decoration: kBaseInputDecoration.copyWith(
+              decoration: kBaseOutlineDecoration.copyWith(
                 labelText: 'Bank Name',
                 errorText: _errorName,
               ),
@@ -351,7 +368,7 @@ class _AddBankState extends State<AddBank> {
             ),
             khBox,
             TextField(
-              decoration: kBaseInputDecoration.copyWith(
+              decoration: kBaseOutlineDecoration.copyWith(
                 labelText: 'Initial Balance',
                 errorText: _errorBalance,
               ),

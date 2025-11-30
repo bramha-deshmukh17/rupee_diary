@@ -13,6 +13,7 @@ import './services/route_observer.dart';
 import './bank/bank.dart';
 import './settings/unlock.dart';
 import './transactions/add_transaction.dart';
+import './transactions/history.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,7 @@ void main() async {
   }
 
   runApp(
+    //  Provide the ThemeProvider to the app
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(initialDark: isDark),
       child: const MyApp(),
@@ -65,6 +67,8 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      //navigation key and route observer
+      navigatorKey: navigatorKey,
       navigatorObservers: [routeObserver],
 
       // 1. Your existing light theme
@@ -100,6 +104,7 @@ class MyApp extends StatelessWidget {
 
         BankScreen.id: (context) => const BankScreen(),
         AddTransaction.id: (context) => const AddTransaction(),
+        HistoryScreen.id: (context) => const HistoryScreen(),
 
         SettingsScreen.id: (context) => SettingsScreen(),
         BillReminder.id: (context) => BillReminder(),
@@ -159,6 +164,7 @@ TextTheme poppinsTextTheme(Brightness brightness) {
           letterSpacing: 0.25,
           color: brightness == Brightness.dark ? kWhite : kBlack,
         ),
+       
         bodySmall: textTheme.bodySmall?.copyWith(
           fontWeight: FontWeight.w500,
           fontSize: 12,

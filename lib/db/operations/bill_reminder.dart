@@ -1,11 +1,12 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:flutter/foundation.dart'; // for debugPrint
+import 'package:flutter/foundation.dart';
 import '../model/bill_reminder.dart';
 
 class BillReminderDao {
   final Database database;
   BillReminderDao(this.database);
 
+  // SQL to create the bill_reminders table
   static const createTable = '''
     create table bill_reminders(
       id integer primary key autoincrement,
@@ -16,7 +17,6 @@ class BillReminderDao {
       notes text,
       is_recurring integer default 0,
       is_paid integer default 0,
-      foreign key (category) references category(id)
     );
   ''';
 
@@ -29,23 +29,22 @@ class BillReminderDao {
     return copy;
   }
 
-  // ADD A BILL REMINDER
+  // add bill reminder
   Future<int> insertBillReminder(Map<String, dynamic> reminder) async {
     final db = await database;
     final normalized = _normalizeMap(reminder);
     return await db.insert('bill_reminders', normalized);
   }
 
-  // GET ALL BILL REMINDERS
+  // get all bill reminders
   Future<List<BillReminderModel>> getAll() async {
     final db = await database;
     final rows = await db.query('bill_reminders', orderBy: 'due_date ASC');
 
-    // If your BillReminderModel.fromMap expects a DateTime in dueDate, ensure it converts there.
     return rows.map(BillReminderModel.fromMap).toList();
   }
 
-  // UPDATE A BILL REMINDER
+  // update a bill reminder
   Future<int> updateBillReminder(int id, Map<String, dynamic> reminder) async {
     final db = await database;
     final normalized = _normalizeMap(reminder);
@@ -57,13 +56,13 @@ class BillReminderDao {
     );
   }
 
-  // DELETE A BILL REMINDER
+  // delete a bill reminder
   Future<int> deleteBillReminder(int id) async {
     final db = await database;
     return await db.delete('bill_reminders', where: 'id = ?', whereArgs: [id]);
   }
 
-  // MARK BILL AS PAID
+  // mark as paid
   Future<int> markBillAsPaid(int id, bool isPaid) async {
     final db = await database;
     return await db.update(
@@ -74,7 +73,7 @@ class BillReminderDao {
     );
   }
 
-  // MOVE TO NEXT RECURRENCE (store nextDue as ISO8601 string)
+  // store nextDue as ISO8601 string
   Future<int> advanceRecurringReminder(int id, DateTime nextDue) async {
     final db = await database;
     return await db.update(
