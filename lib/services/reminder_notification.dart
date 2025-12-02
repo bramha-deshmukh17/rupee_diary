@@ -345,8 +345,6 @@ class ReminderNotificationService {
       NotificationDetails(android: android, iOS: ios),
       payload: payload,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents:
           recurring ? DateTimeComponents.dayOfMonthAndTime : null,
     );
