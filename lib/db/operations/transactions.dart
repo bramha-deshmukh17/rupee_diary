@@ -25,19 +25,16 @@ class TransactionsDao {
 
   // insert otransaction and update bank balance atomically with transaction
   Future<int> insertTransaction(Map<String, dynamic> transaction) async {
-    Database db = database;
-    await db.transaction((txn) async {
-      int n1= await txn.insert('transactions', transaction);
-      int n2= await txn.rawUpdate(
-        'update bank set balance = balance + ? where id = ?',
-        [
-          transaction['type'] == 'income' || transaction['type'] == 'borrow'
-              ? transaction['amount']
-              : -transaction['amount'],
-          transaction['bank_Id'],
-        ],
-      );
-      if(n1==0 || n2==0){
+    await database.transaction((txn) async {
+      int n1 = await txn.insert('transactions', transaction);
+      int n2 = await txn
+          .rawUpdate('update bank set balance = balance + ? where id = ?', [
+            transaction['type'] == 'income' || transaction['type'] == 'borrow'
+                ? transaction['amount']
+                : -transaction['amount'],
+            transaction['bank_Id'],
+          ]);
+      if (n1 == 0 || n2 == 0) {
         throw Exception('Failed to insert transaction or update bank balance');
       }
     });
@@ -136,31 +133,44 @@ class TransactionsDao {
   //2. total income this month
   //3. total expense this month
   Future<Map<String, double>> getUsage() async {
-    final incomeResult = await database.rawQuery('''
-    select sum(amount) as total_income
-    from transactions
-    where type = 'income'
-      and date >= date('now', 'start of month')
-      and date <= datetime('now')
-  ''');
+    late List<Map<String, Object?>> incomeResult;
+    late List<Map<String, Object?>> expenseResult;
+    late List<Map<String, Object?>> balanceResult;
 
-    final expenseResult = await database.rawQuery('''
-    select sum(amount) as total_expense
-    from transactions
-    where type = 'expense'
-      and date >= date('now', 'start of month')
-      and date <= datetime('now')
-  ''');
+    await database.transaction((txn) async {
+      incomeResult = await txn.rawQuery('''
+        select coalesce(sum(amount), 0) as total_income
+        from transactions
+        where type = 'income'
+          and date(date) >= date('now', 'start of month', 'localtime')
+          and date(date) <= date('now', 'localtime')
+      ''');
 
-    final balanceResult = await database.rawQuery('''
-    select sum(balance) as total_balance
-    from bank
-  ''');
+      expenseResult = await txn.rawQuery('''
+        select coalesce(sum(amount), 0) as total_expense
+        from transactions
+        where type = 'expense'
+          and date(date) >= date('now', 'start of month', 'localtime')
+          and date(date) <= date('now', 'localtime')
+      ''');
 
-    final totalIncome = incomeResult.first['total_income'] as double? ?? 0.0;
-    final totalExpense = expenseResult.first['total_expense'] as double? ?? 0.0;
-    final totalBalance = balanceResult.first['total_balance'] as double? ?? 0.0;
+      balanceResult = await txn.rawQuery('''
+        select coalesce(sum(balance), 0) as total_balance
+        from bank
+      ''');
+    });
 
+    double toDouble(Object? v) {
+      if (v == null) return 0.0;
+      if (v is double) return v;
+      if (v is int) return v.toDouble();
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString()) ?? 0.0;
+    }
+
+    final totalIncome = toDouble(incomeResult.first['total_income']);
+    final totalExpense = toDouble(expenseResult.first['total_expense']);
+    final totalBalance = toDouble(balanceResult.first['total_balance']);
     return {
       'total_income': totalIncome,
       'total_expense': totalExpense,
@@ -181,6 +191,15 @@ class TransactionsDao {
       [5],
     );
     return rows.map((e) => TransactionModel.fromMap(e)).toList();
+  }
+
+  Future<void> modifyNotes(int id, String notes) async {
+    await database.update(
+      'transactions',
+      {'notes': notes},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   // ===========================

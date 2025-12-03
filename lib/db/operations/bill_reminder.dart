@@ -13,10 +13,10 @@ class BillReminderDao {
       title text not null,
       amount real not null,
       due_date text not null,          -- store as ISO8601 string
-      category int not null,
+      category text not null,
       notes text,
       is_recurring integer default 0,
-      is_paid integer default 0,
+      is_paid integer default 0
     );
   ''';
 

@@ -175,10 +175,11 @@ class BalanceCard extends StatelessWidget {
           const SizedBox(height: 8),
           // Display dynamic Balance
           Text(
-            "\$${balance.toStringAsFixed(2)}",
+            "₹${balance.toStringAsFixed(2)}",
             style: textTheme.headlineMedium?.copyWith(color: kWhite),
           ),
           khBox,
+          Text("This month", style: Theme.of(context).textTheme.bodyLarge),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -192,7 +193,7 @@ class BalanceCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   // Display dynamic Income
                   Text(
-                    "Income\n\$${income.toStringAsFixed(2)}",
+                    "Income\n₹${income.toStringAsFixed(2)}",
                     style: textTheme.bodyMedium?.copyWith(color: kWhite),
                   ),
                 ],
@@ -207,7 +208,7 @@ class BalanceCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   // Display dynamic Expense
                   Text(
-                    "Expenses\n\$${expense.toStringAsFixed(2)}",
+                    "Expenses\n₹${expense.toStringAsFixed(2)}",
                     style: textTheme.bodyMedium?.copyWith(color: kWhite),
                   ),
                 ],
@@ -338,8 +339,8 @@ class TransactionTile extends StatelessWidget {
             children: [
               Text(
                 (type == 'income' || type == 'borrow')
-                    ? '+${amount.toStringAsFixed(2)}'
-                    : '-${amount.toStringAsFixed(2)}',
+                    ? '+₹${amount.toStringAsFixed(2)}'
+                    : '-₹${amount.toStringAsFixed(2)}',
                 style: textTheme.bodyLarge?.copyWith(
                   color: colorFor,
                   fontWeight: FontWeight.bold,

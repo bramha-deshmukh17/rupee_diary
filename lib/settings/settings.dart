@@ -189,7 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           khBox,khBox,
           Center(
             child: Text(
-              "Version 1.2.0",
+              "Version 1.3.2",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
           ),

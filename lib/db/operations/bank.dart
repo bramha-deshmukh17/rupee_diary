@@ -19,17 +19,20 @@ class BankDao {
 
   //insert into bank table
   Future<int> insertBank(Bank bank) async {
-    // If no default exists, make this one default automatically.
-    final existingDefault = await database.query(
+    // If no default exists, make this one default automatically, inside a transaction.
+    final id = await database.transaction<int>((txn) async {
+      final existingDefault = await txn.query(
       'bank',
       where: 'is_default = 1',
       limit: 1,
-    );
-    final makeDefault = existingDefault.isEmpty;
-    return database.insert(
+      );
+      final makeDefault = existingDefault.isEmpty;
+      return await txn.insert(
       'bank',
       bank.copyWith(isDefault: makeDefault).toMap(),
-    );
+      );
+    });
+    return id;
   }
 
   //get all banks

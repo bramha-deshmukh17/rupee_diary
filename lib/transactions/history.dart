@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 
+import '../utility/snack.dart';
 import '../db/database_helper.dart';
 import '../db/model/bank.dart';
 import '../db/model/transactions.dart';
@@ -123,43 +124,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return SafeArea(
       child: Scaffold(
-      appBar: Appbar(title: 'Transactions', isBackButton: true),
-      body: ModalProgressHUD(
-        inAsyncCall: _isLoading,
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15.0),
-          child:
-              _transactions.isEmpty && !_isLoading
-                  ? Center(
-                    child: Text('No transactions', style: textTheme.bodyLarge),
-                  )
-                  : ListView.builder(
-                    controller: _scrollController,
-                    itemCount: _transactions.length,
-                    itemBuilder: (context, index) {
-                      final t = _transactions[index];
-                      return TransactionTile(
-                        amount: t.amount,
-                        type: t.type,
-                        bankName: t.bankName,
-                        date: t.date,
-                        balance: t.balance,
-                        category: t.category,
-                        notes: t.notes,
-                      );
-                    },
-                  ),
+        appBar: Appbar(title: 'Transactions', isBackButton: true),
+        body: ModalProgressHUD(
+          inAsyncCall: _isLoading,
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15.0),
+            child:
+                _transactions.isEmpty && !_isLoading
+                    ? Center(
+                      child: Text(
+                        'No transactions',
+                        style: textTheme.bodyLarge,
+                      ),
+                    )
+                    : ListView.builder(
+                      controller: _scrollController,
+                      itemCount: _transactions.length,
+                      itemBuilder: (context, index) {
+                        final t = _transactions[index];
+                        return TransactionTile(
+                          id: t.id!,
+                          amount: t.amount,
+                          type: t.type,
+                          bankName: t.bankName,
+                          date: t.date,
+                          balance: t.balance,
+                          category: t.category,
+                          notes: t.notes,
+                        );
+                      },
+                    ),
+          ),
         ),
-      ),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showFilterSheet,
-        backgroundColor: kPrimaryColor,
-        foregroundColor: kWhite,
-        shape: const CircleBorder(),
-        child: const Icon(FontAwesomeIcons.filter, size: 28),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButton: FloatingActionButton(
+          onPressed: _showFilterSheet,
+          backgroundColor: kPrimaryColor,
+          foregroundColor: kWhite,
+          shape: const CircleBorder(),
+          child: const Icon(FontAwesomeIcons.filter, size: 28),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       ),
     );
   }
@@ -167,6 +172,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
 //transaction tile widget to show individual transaction details
 class TransactionTile extends StatelessWidget {
+  final int id;
   final String type;
   final String bankName;
   final DateTime date;
@@ -177,6 +183,7 @@ class TransactionTile extends StatelessWidget {
 
   const TransactionTile({
     super.key,
+    required this.id,
     required this.amount,
     required this.type,
     required this.bankName,
@@ -198,6 +205,7 @@ class TransactionTile extends StatelessWidget {
         child: ListTile(
           contentPadding: EdgeInsets.all(10.0),
           leading: GestureDetector(
+            onLongPress: editNotesDialog(id, notes, textTheme, context),
             onTap: showMyDialog('Category', category, textTheme, context),
             child: CircleAvatar(
               backgroundColor: colorFor,
@@ -237,21 +245,81 @@ class TransactionTile extends StatelessWidget {
             children: [
               Text(
                 type == 'income' || type == 'borrow'
-                    ? '+${amount.toStringAsFixed(2)}'
-                    : '-${amount.toStringAsFixed(2)}',
+                    ? '+₹${amount.toStringAsFixed(2)}'
+                    : '-₹${amount.toStringAsFixed(2)}',
                 style: textTheme.bodyLarge?.copyWith(
                   color: colorFor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(balance.toStringAsFixed(2), style: textTheme.bodySmall),
+              Text('₹${balance.toStringAsFixed(2)}', style: textTheme.bodySmall),
             ],
           ),
         ),
       ),
     );
   }
+
+  //dialog to edit notes details when transaction tile is long pressed
+  GestureLongPressCallback? editNotesDialog(
+    int id,
+    String? message,
+    TextTheme textTheme,
+    BuildContext context,
+  ) {
+    if (message == null || message.isEmpty) {
+      return null;
+    }
+    return () {
+      showDialog(
+        context: context,
+        builder: (context) {
+          final _controller = TextEditingController(text: message);
+          return AlertDialog(
+            title: Text('Edit Note', style: textTheme.bodyLarge),
+            content: TextField(
+              controller: _controller,
+              maxLines: 5,
+              style: textTheme.bodyMedium,
+              decoration: kBaseInputDecoration.copyWith(labelText: "New Note"),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text(
+                  'Cancel',
+                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  // Save the edited note
+                  try {
+                    await DatabaseHelper.instance.transactionsDao.modifyNotes(
+                      id,
+                      _controller.text,
+                    );
+                    showSnack("Note updated", context);
+                  } catch (e) {
+                    showSnack("Failed to update note", context, error: true);
+                  }
+                  Navigator.pop(context);
+                },
+                child: Text(
+                  'Save',
+                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    };
+  }
+
   //dialog to show notes or category details when transaction tile is tapped
   GestureTapCallback? showMyDialog(
     String title,
@@ -519,7 +587,6 @@ class _FilterSheetState extends State<FilterSheet> {
                     onPressed: _pickRange,
                   ),
                 ),
-                
               ],
             ),
             khBox,
