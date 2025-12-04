@@ -202,16 +202,19 @@ class TransactionTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 10.0),
       child: ListTile(
         onTap: showMyDialog('Note', notes, textTheme, context),
-        onLongPress: editNotesDialog(id, notes, textTheme, context),
+        onLongPress: deleteLendBorrow(id, notes, textTheme, type, context),
         contentPadding: const EdgeInsets.all(10.0),
         leading: InkWell(
           borderRadius: BorderRadius.circular(24),
-          child: CircleAvatar(
-            backgroundColor: colorFor,
-            child: Icon(
-              categoryIcons[category] ?? FontAwesomeIcons.question,
-              size: 15,
-              color: kWhite,
+          child: GestureDetector(
+            onTap: showMyDialog('Category', category, textTheme, context),
+            child: CircleAvatar(
+              backgroundColor: colorFor,
+              child: Icon(
+                categoryIcons[category] ?? FontAwesomeIcons.question,
+                size: 15,
+                color: kWhite,
+              ),
             ),
           ),
         ),
@@ -260,62 +263,59 @@ class TransactionTile extends StatelessWidget {
   }
 
   //dialog to edit notes details when transaction tile is long pressed
-  GestureLongPressCallback? editNotesDialog(
+  GestureLongPressCallback? deleteLendBorrow(
     int id,
     String? message,
     TextTheme textTheme,
+    String type,
     BuildContext context,
   ) {
-    if (message == null || message.isEmpty) {
-      return null;
+    // Always allow delete for lend/borrow even if notes are empty.
+
+    if (type == 'lend' || type == 'borrow') {
+      return () {
+        showDialog(
+          context: context,
+          builder:
+              (_) => AlertDialog(
+                title: Text(
+                  'Delete Transaction',
+                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
+                ),
+                content: const Text(
+                  'Lend/borrow transaction will be deleted. Do you want to proceed?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Cancel', style: textTheme.bodyLarge),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      try {
+                        await DatabaseHelper.instance.transactionsDao.deleteTxn(
+                          id,
+                        );
+                      } catch (e) {
+                        showSnack(
+                          "Failed to delete transaction",
+                          context,
+                          error: true,
+                        );
+                      }
+                      Navigator.pop(context);
+                    },
+                    child: Text(
+                      'Delete',
+                      style: textTheme.bodyLarge?.copyWith(color: kRed),
+                    ),
+                  ),
+                ],
+              ),
+        );
+      };
     }
-    return () {
-      showDialog(
-        context: context,
-        builder: (context) {
-          final _controller = TextEditingController(text: message);
-          return AlertDialog(
-            title: Text('Edit Note', style: textTheme.bodyLarge),
-            content: TextField(
-              controller: _controller,
-              maxLines: 2,
-              style: textTheme.bodyMedium,
-              decoration: kBaseInputDecoration.copyWith(labelText: "New Note"),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text(
-                  'Cancel',
-                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
-                ),
-              ),
-              TextButton(
-                onPressed: () async {
-                  // Save the edited note
-                  try {
-                    await DatabaseHelper.instance.transactionsDao.modifyNotes(
-                      id,
-                      _controller.text,
-                    );
-                    showSnack("Note updated", context);
-                  } catch (e) {
-                    showSnack("Failed to update note", context, error: true);
-                  }
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  'Save',
-                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    };
+    return null;
   }
 
   //dialog to show notes or category details when transaction tile is tapped
@@ -333,17 +333,17 @@ class TransactionTile extends StatelessWidget {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: Text(title, style: textTheme.bodyLarge),
+            title: Text(
+              title,
+              style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
+            ),
             content: Text(message, style: textTheme.bodyMedium),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: Text(
-                  'Close',
-                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
-                ),
+                child: Text('Close', style: textTheme.bodyLarge),
               ),
             ],
           );

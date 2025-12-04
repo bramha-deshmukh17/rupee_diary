@@ -193,13 +193,52 @@ class TransactionsDao {
     return rows.map((e) => TransactionModel.fromMap(e)).toList();
   }
 
-  Future<void> modifyNotes(int id, String notes) async {
-    await database.update(
-      'transactions',
-      {'notes': notes},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+  //delete transaction of lend and borrow type only to keep expense clean
+  Future<void> deleteTxn(int id) async {
+    await database.transaction((txn) async {
+      // Get the transaction details (only lend/borrow)
+      final txnData = await txn.query(
+        'transactions',
+        where: 'id = ? and type in ("lend", "borrow")',
+        whereArgs: [id],
+      );
+      if (txnData.isEmpty) {
+        throw Exception('Transaction not found or not a lend/borrow');
+      }
+      
+      final Map<String, dynamic> transaction = Map.from(txnData.first);
+
+      // Resolve bank id and ensure it's present
+      final bankId = transaction['bank_id'];
+      if (bankId == null) {
+        throw Exception('Missing bank id on transaction');
+      }
+
+      // Normalize amount to double
+      final amount =
+          (transaction['amount'] is num)
+              ? (transaction['amount'] as num).toDouble()
+              : double.tryParse(transaction['amount'].toString()) ?? 0.0;
+
+      // Compute delta to apply to bank balance (reverse the original effect)
+      final type = transaction['type']?.toString();
+      final double delta = (type == 'borrow') ? -amount : amount;
+
+      // Delete the transaction and update bank balance atomically
+      final n1 = await txn.delete(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      final n2 = await txn.rawUpdate(
+        'update bank set balance = balance + ? where id = ?',
+        [delta, bankId],
+      );
+
+      if (n1 == 0 || n2 == 0) {
+        throw Exception('Failed to delete transaction or update bank balance');
+      }
+    });
   }
 
   // ===========================
