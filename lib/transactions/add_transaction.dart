@@ -345,8 +345,7 @@ class _AddTransactionState extends State<AddTransaction> {
             // Notes
             TextField(
               controller: _notesController,
-              minLines: 3,
-              maxLines: 5,
+              maxLines: 2,
               cursorColor: kSecondaryColor,
               decoration: kBaseInputDecoration.copyWith(labelText: 'Notes...'),
             ),

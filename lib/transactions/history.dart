@@ -197,65 +197,63 @@ class TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorFor = type == 'income' || type == 'borrow' ? kGreen : kRed;
-    return GestureDetector(
-      onTap: showMyDialog('Note', notes, textTheme, context),
-      child: Card(
-        elevation: 5,
-        margin: EdgeInsets.symmetric(vertical: 10.0),
-        child: ListTile(
-          contentPadding: EdgeInsets.all(10.0),
-          leading: GestureDetector(
-            onLongPress: editNotesDialog(id, notes, textTheme, context),
-            onTap: showMyDialog('Category', category, textTheme, context),
-            child: CircleAvatar(
-              backgroundColor: colorFor,
-              child: Icon(
-                categoryIcons[category] ?? FontAwesomeIcons.question,
-                size: 15,
-                color: kWhite,
-              ),
+    return Card(
+      elevation: 5,
+      margin: const EdgeInsets.symmetric(vertical: 10.0),
+      child: ListTile(
+        onTap: showMyDialog('Note', notes, textTheme, context),
+        onLongPress: editNotesDialog(id, notes, textTheme, context),
+        contentPadding: const EdgeInsets.all(10.0),
+        leading: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          child: CircleAvatar(
+            backgroundColor: colorFor,
+            child: Icon(
+              categoryIcons[category] ?? FontAwesomeIcons.question,
+              size: 15,
+              color: kWhite,
             ),
           ),
-          title: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text('$bankName ', style: textTheme.bodyLarge),
-                  notes != null && notes!.isNotEmpty
-                      ? Icon(
-                        FontAwesomeIcons.solidMessage,
-                        size: 10,
-                        color: textTheme.bodySmall?.color,
-                      )
-                      : SizedBox.shrink(),
-                ],
+        ),
+        title: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('$bankName ', style: textTheme.bodyLarge),
+                notes != null && notes!.isNotEmpty
+                    ? Icon(
+                      FontAwesomeIcons.solidMessage,
+                      size: 10,
+                      color: textTheme.bodySmall?.color,
+                    )
+                    : SizedBox.shrink(),
+              ],
+            ),
+            SizedBox(height: 4),
+            Text(
+              DateFormat('dd/MM/yyyy • hh:mm:ss').format(date),
+              style: textTheme.bodySmall,
+            ),
+          ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              type == 'income' || type == 'borrow'
+                  ? '+₹${amount.toStringAsFixed(2)}'
+                  : '-₹${amount.toStringAsFixed(2)}',
+              style: textTheme.bodyLarge?.copyWith(
+                color: colorFor,
+                fontWeight: FontWeight.bold,
               ),
-              SizedBox(height: 4),
-              Text(
-                DateFormat('dd/MM/yyyy • hh:mm:ss').format(date),
-                style: textTheme.bodySmall,
-              ),
-            ],
-          ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                type == 'income' || type == 'borrow'
-                    ? '+₹${amount.toStringAsFixed(2)}'
-                    : '-₹${amount.toStringAsFixed(2)}',
-                style: textTheme.bodyLarge?.copyWith(
-                  color: colorFor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text('₹${balance.toStringAsFixed(2)}', style: textTheme.bodySmall),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+            Text('₹${balance.toStringAsFixed(2)}', style: textTheme.bodySmall),
+          ],
         ),
       ),
     );
@@ -280,7 +278,7 @@ class TransactionTile extends StatelessWidget {
             title: Text('Edit Note', style: textTheme.bodyLarge),
             content: TextField(
               controller: _controller,
-              maxLines: 5,
+              maxLines: 2,
               style: textTheme.bodyMedium,
               decoration: kBaseInputDecoration.copyWith(labelText: "New Note"),
             ),
