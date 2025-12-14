@@ -26,6 +26,7 @@ class _BottomBarState extends State<BottomBar> {
         children: [
           IconButton(
             icon: Icon(FontAwesomeIcons.house, color: _colorFor(0)),
+            tooltip: 'Home',
             onPressed: () {
               if(widget.currentIndex != 0) {
                 Navigator.pushNamed(context, HomeScreen.id);
@@ -33,16 +34,20 @@ class _BottomBarState extends State<BottomBar> {
             },
           ),
           IconButton(
-            icon: Icon(FontAwesomeIcons.chartBar, color: _colorFor(1)),
-            onPressed: () {},
+            icon: Icon(FontAwesomeIcons.chartColumn, color: _colorFor(1)),
+            tooltip: 'Statistics',
+            onPressed: () {
+            },
           ),
           const SizedBox(width: 40),
           IconButton(
             icon: Icon(FontAwesomeIcons.wallet, color: _colorFor(2)),
+            tooltip: 'Budgets',
             onPressed: () {},
           ),
           IconButton(
             icon: Icon(FontAwesomeIcons.bank, color: _colorFor(3)),
+            tooltip: 'Banks',
             onPressed: () {
               if (widget.currentIndex != 3) {
                 Navigator.pushNamed(context, BankScreen.id);

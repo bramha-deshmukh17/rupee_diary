@@ -68,6 +68,10 @@ final Map<String, IconData> categoryIcons = {
   'Travel': FontAwesomeIcons.plane,
   'Bills': FontAwesomeIcons.fileInvoice,
   'Gifts': FontAwesomeIcons.gift,
+  'Income':FontAwesomeIcons.arrowDownLong,
+  'Lend': FontAwesomeIcons.handsHoldingCircle,
+  'Borrow': FontAwesomeIcons.handsHoldingCircle,
+  'Settlement': FontAwesomeIcons.handshake,
   'Others': FontAwesomeIcons.question,
 };
 
