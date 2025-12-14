@@ -36,8 +36,9 @@ class DatabaseHelper {
       version: 1,
       onCreate: _onCreate,
       onConfigure: (db) async {
-        await db.execute('PRAGMA foreign_keys = ON');
+        await db.execute('pragma foreign_keys = on');
       },
+      onUpgrade: _onUpgrade,
     );
 
     // Initialize DAOs only after DB is ready
@@ -56,5 +57,21 @@ class DatabaseHelper {
     await db.execute(BillReminderDao.createTable);
     await db.execute(BankDao.createTable);
     await db.execute(TransactionsDao.createTable);
+  }
+
+  // apply migrations sequentially so missed versions are handled
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    for (var v = oldVersion + 1; v <= newVersion; v++) {
+      await _runMigration(db, v);
+    }
+  }
+
+  Future<void> _runMigration(Database db, int version) async {
+    switch (version) {
+      case 2:
+       
+        break;
+      // add future cases here (3, 4, ...)
+    }
   }
 }

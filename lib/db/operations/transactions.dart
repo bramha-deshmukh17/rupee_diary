@@ -23,23 +23,63 @@ class TransactionsDao {
     );
   ''';
 
-  // insert otransaction and update bank balance atomically with transaction
-  Future<int> insertTransaction(Map<String, dynamic> transaction) async {
-    await database.transaction((txn) async {
-      int n1 = await txn.insert('transactions', transaction);
-      int n2 = await txn
-          .rawUpdate('update bank set balance = balance + ? where id = ?', [
-            transaction['type'] == 'income' || transaction['type'] == 'borrow'
-                ? transaction['amount']
-                : -transaction['amount'],
-            transaction['bank_Id'],
-          ]);
-      if (n1 == 0 || n2 == 0) {
-        throw Exception('Failed to insert transaction or update bank balance');
-      }
-    });
+  // insert transaction and update bank balance atomically
+  Future<int> insertTransaction(Map<String, dynamic> t) async {
+    return await database.transaction((txn) async {
+      // normalize inputs
+      final int bankId = (t['bank_id'] ?? t['bankId']) as int;
+      final double amount = (t['amount'] as num).toDouble();
+      final String type = (t['type'] as String).toLowerCase();
+      final String category =
+          (t['category'] as String?) ?? 'Settlement';
+      final String dateIso =
+          (t['date'] as String?) ?? DateTime.now().toIso8601String();
+      final String? notes = t['notes']?.toString();
 
-    return 1;
+      // fetch current bank balance
+      final bankRows = await txn.query(
+        'bank',
+        columns: ['balance'],
+        where: 'id = ?',
+        whereArgs: [bankId],
+      );
+      if (bankRows.isEmpty) throw Exception('bank not found');
+      final double currentBalance =
+          (bankRows.first['balance'] as num?)?.toDouble() ?? 0.0;
+
+      // compute delta
+      final double delta =
+          (type == 'income' || type == 'borrow') ? amount : -amount;
+      final double newBalance = currentBalance + delta;
+
+      // update bank
+      final nBank = await txn.rawUpdate(
+        'update bank set balance = ? where id = ?',
+        [newBalance, bankId],
+      );
+      if (nBank == 0) {
+        debugPrint('failed to update bank balance for bank_id=$bankId');
+        throw Exception('failed to update bank balance');
+      }
+
+      // insert transaction with computed balance snapshot
+      final id = await txn.insert('transactions', {
+        'bank_id': bankId,
+        'amount': amount,
+        'type': type,
+        'balance': newBalance,
+        'category': category,
+        'date': dateIso,
+        'notes': notes,
+      }, conflictAlgorithm: ConflictAlgorithm.abort);
+      if (id <= 0) {
+        debugPrint(
+          'failed to insert transaction for bank_id=$bankId type=$type amount=$amount',
+        );
+        throw Exception('failed to insert transaction');
+      }
+      return id;
+    });
   }
 
   //  check transactions exist for a bank
@@ -193,54 +233,6 @@ class TransactionsDao {
     return rows.map((e) => TransactionModel.fromMap(e)).toList();
   }
 
-  //delete transaction of lend and borrow type only to keep expense clean
-  Future<void> deleteTxn(int id) async {
-    await database.transaction((txn) async {
-      // Get the transaction details (only lend/borrow)
-      final txnData = await txn.query(
-        'transactions',
-        where: 'id = ? and type in ("lend", "borrow")',
-        whereArgs: [id],
-      );
-      if (txnData.isEmpty) {
-        throw Exception('Transaction not found or not a lend/borrow');
-      }
-      
-      final Map<String, dynamic> transaction = Map.from(txnData.first);
-
-      // Resolve bank id and ensure it's present
-      final bankId = transaction['bank_id'];
-      if (bankId == null) {
-        throw Exception('Missing bank id on transaction');
-      }
-
-      // Normalize amount to double
-      final amount =
-          (transaction['amount'] is num)
-              ? (transaction['amount'] as num).toDouble()
-              : double.tryParse(transaction['amount'].toString()) ?? 0.0;
-
-      // Compute delta to apply to bank balance (reverse the original effect)
-      final type = transaction['type']?.toString();
-      final double delta = (type == 'borrow') ? -amount : amount;
-
-      // Delete the transaction and update bank balance atomically
-      final n1 = await txn.delete(
-        'transactions',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      final n2 = await txn.rawUpdate(
-        'update bank set balance = balance + ? where id = ?',
-        [delta, bankId],
-      );
-
-      if (n1 == 0 || n2 == 0) {
-        throw Exception('Failed to delete transaction or update bank balance');
-      }
-    });
-  }
-
   // ===========================
   // DEBUG: PARSED MODELS
   Future<void> debugPrintAllModels() async {
@@ -251,7 +243,7 @@ class TransactionsDao {
     } else {
       for (final t in list) {
         debugPrint(
-          '🧾 ID: ${t.id} | BANK: ${t.bankName} | ${t.type.toUpperCase()} | ₹${t.amount} | BALANCE: ${t.balance}'
+          '🧾 ID: ${t.id} | BANK: ${t.bankName} | ${t.type} | ₹${t.amount} | BALANCE: ${t.balance}'
           '| DATE: ${t.date.toIso8601String()} | CATEGORY: ${t.category} | NOTES: ${t.notes}',
         );
       }

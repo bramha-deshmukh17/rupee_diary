@@ -286,6 +286,7 @@ class TransactionTile extends StatelessWidget {
     final type = transaction.type;
     final amount = transaction.amount;
     final notes = transaction.notes;
+    final balance = transaction.balance;
     final category = transaction.category;
     final bankName = transaction.bankName;
     final DateTime date = transaction.date;
@@ -350,8 +351,7 @@ class TransactionTile extends StatelessWidget {
               // If your model has a balance field, use it here.
               // Otherwise, you might want to hide this Text widget.
               Text(
-                // transaction.remainingBalance.toStringAsFixed(2),
-                "Balance", // Placeholder if field is missing in model
+                balance.toStringAsFixed(2),
                 style: textTheme.bodySmall,
               ),
             ],

@@ -152,13 +152,13 @@ class _AddTransactionState extends State<AddTransaction> {
       }
       
       final data = <String, dynamic>{
-        'bank_Id': _selectedBankId,
+        'bank_id': _selectedBankId,
         'amount': _amount,
         'balance': balance,
         'type': _types[_typeIndex].toLowerCase(),
         'date': _selectedDate.toIso8601String(),
         'category': (_types[_typeIndex].toLowerCase() != 'expense')
-        ? 'Others'
+        ? _types[_typeIndex]
         : _selectedCategory,
         'notes': _notesController.text.trim().isEmpty
         ? null

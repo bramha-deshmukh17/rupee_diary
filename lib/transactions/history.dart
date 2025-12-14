@@ -151,6 +151,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           balance: t.balance,
                           category: t.category,
                           notes: t.notes,
+                          onMarkedReturned: () {
+                            // refresh list after marking returned
+                            setState(() {
+                              page = 0;
+                              _transactions.clear();
+                              _hasMoreData = true;
+                            });
+                            _loadPageWithFilters();
+                          },
                         );
                       },
                     ),
@@ -170,7 +179,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
-//transaction tile widget to show individual transaction details
+// transaction tile widget to show individual transaction details
 class TransactionTile extends StatelessWidget {
   final int id;
   final String type;
@@ -180,7 +189,7 @@ class TransactionTile extends StatelessWidget {
   final double balance;
   final String category;
   final String? notes;
-
+  final VoidCallback onMarkedReturned;
   const TransactionTile({
     super.key,
     required this.id,
@@ -191,6 +200,7 @@ class TransactionTile extends StatelessWidget {
     required this.balance,
     required this.category,
     required this.notes,
+    required this.onMarkedReturned,
   });
 
   @override
@@ -202,7 +212,10 @@ class TransactionTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 10.0),
       child: ListTile(
         onTap: showMyDialog('Note', notes, textTheme, context),
-        onLongPress: deleteLendBorrow(id, notes, textTheme, type, context),
+        onLongPress:
+            (type == 'lend' || type == 'borrow')
+                ? _markAsReturnedDialog(textTheme: textTheme, context: context)
+                : null,
         contentPadding: const EdgeInsets.all(10.0),
         leading: InkWell(
           borderRadius: BorderRadius.circular(24),
@@ -210,11 +223,7 @@ class TransactionTile extends StatelessWidget {
             onTap: showMyDialog('Category', category, textTheme, context),
             child: CircleAvatar(
               backgroundColor: colorFor,
-              child: Icon(
-                categoryIcons[category] ?? FontAwesomeIcons.question,
-                size: 15,
-                color: kWhite,
-              ),
+              child: Icon(categoryIcons[category], size: 15, color: kWhite),
             ),
           ),
         ),
@@ -262,62 +271,6 @@ class TransactionTile extends StatelessWidget {
     );
   }
 
-  //dialog to edit notes details when transaction tile is long pressed
-  GestureLongPressCallback? deleteLendBorrow(
-    int id,
-    String? message,
-    TextTheme textTheme,
-    String type,
-    BuildContext context,
-  ) {
-    // Always allow delete for lend/borrow even if notes are empty.
-
-    if (type == 'lend' || type == 'borrow') {
-      return () {
-        showDialog(
-          context: context,
-          builder:
-              (_) => AlertDialog(
-                title: Text(
-                  'Delete Transaction',
-                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
-                ),
-                content: const Text(
-                  'Lend/borrow transaction will be deleted. Do you want to proceed?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('Cancel', style: textTheme.bodyLarge),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      try {
-                        await DatabaseHelper.instance.transactionsDao.deleteTxn(
-                          id,
-                        );
-                      } catch (e) {
-                        showSnack(
-                          "Failed to delete transaction",
-                          context,
-                          error: true,
-                        );
-                      }
-                      Navigator.pop(context);
-                    },
-                    child: Text(
-                      'Delete',
-                      style: textTheme.bodyLarge?.copyWith(color: kRed),
-                    ),
-                  ),
-                ],
-              ),
-        );
-      };
-    }
-    return null;
-  }
-
   //dialog to show notes or category details when transaction tile is tapped
   GestureTapCallback? showMyDialog(
     String title,
@@ -350,6 +303,145 @@ class TransactionTile extends StatelessWidget {
         },
       );
     };
+  }
+
+  // Long-press handler to mark lend/borrow as returned
+  GestureLongPressCallback _markAsReturnedDialog({
+    required TextTheme textTheme,
+    required BuildContext context,
+  }) {
+    return () {
+      showDialog(
+        context: context,
+        builder:
+            (_) => AlertDialog(
+              title: Text('Mark as Returned', style: textTheme.bodyLarge),
+              content: Text(
+                type == 'lend'
+                    ? 'Mark this lend as returned? This will add an income entry.'
+                    : 'Mark this borrow as returned? This will add an expense entry.',
+                style: textTheme.bodyMedium,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel', style: textTheme.bodyLarge),
+                ),
+                isReturned(notes)
+                    ? TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Okay',
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: kPrimaryColor,
+                        ),
+                      ),
+                    )
+                    : TextButton(
+                      onPressed: () async {
+                        try {
+                          await markTransaction();
+                          onMarkedReturned(); // trigger parent refresh
+                          showSnack('Marked as returned', context);
+                        } catch (e) {
+                          showSnack(
+                            'Failed to mark as returned',
+                            context,
+                            error: true,
+                          );
+                        }
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        'Mark as Returned',
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: kPrimaryColor,
+                        ),
+                      ),
+                    ),
+              ],
+            ),
+      );
+    };
+  }
+
+  // Function to mark the transaction as returned
+  Future<void> markTransaction() async {
+    // Fetch the bank id needed for insert
+    final rows = await DatabaseHelper.instance.transactionsDao.database.query(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    final bankId = rows.isNotEmpty ? rows.first['bank_id'] as int : null;
+    if (bankId == null) {
+      throw Exception('Bank not found for transaction');
+    }
+
+    // Build the appended note (preserve existing)
+    final prevNotes = rows.first['notes'] as String?;
+
+    // Create a "return" transaction:
+    final returnType = (type == 'lend') ? 'income' : 'expense';
+    final now = DateTime.now();
+
+    final banks = await DatabaseHelper.instance.bankDao.getBanks();
+    if (banks.isEmpty) {
+      throw Exception('No banks found');
+    }
+    final data = banks.firstWhere((b) => b.id == bankId);
+
+    // bank's balance after transaction (will be computed in DAO, but kept here if needed elsewhere)
+    double balance = data.balance!;
+    final amount = rows.first['amount']! as num;
+    switch (type.toLowerCase()) {
+      case 'borrow':
+        balance += amount;
+        break;
+      case 'lend':
+        balance -= amount;
+        break;
+      default:
+        break;
+    }
+
+    final tx = {
+      'bank_id': bankId,
+      'amount': amount,
+      'type': returnType,
+      'balance': balance,
+      'category': 'Settlement',
+      'date': now.toIso8601String(),
+      'notes':
+          'Return of $type on ${DateFormat('dd/MM/yy').format(date)}${prevNotes == null || prevNotes.isEmpty ? '' : ' \n$prevNotes'}',
+    };
+
+    await DatabaseHelper.instance.transactionsDao.insertTransaction(tx);
+
+    final tempNote =
+        (prevNotes == null || prevNotes.isEmpty)
+            ? 'returned'
+            : '$prevNotes - returned';
+    // Append note on original txn (safe concat even if notes were NULL)
+    await DatabaseHelper.instance.transactionsDao.database.rawUpdate(
+      '''
+        update transactions
+        set notes = ?
+        where id = ?
+      ''',
+      [
+        tempNote, // append  returned message
+        id,
+      ],
+    );
+  }
+
+  // check if transaction is already marked as returned
+  bool isReturned(String? notes) {
+    if (notes == null) {
+      return false;
+    }
+    return notes.toLowerCase().contains('returned');
   }
 }
 
