@@ -24,11 +24,11 @@ class BillReminderModel {
       'id': id,
       'title': title,
       'amount': amount,
-      'due_date': dueDate.toIso8601String(),
+      'dueDate': dueDate.toIso8601String(),
       'category': category,
       'notes': notes,
-      'is_recurring': (isRecurring == true) ? 1 : 0,
-      'is_paid': (isPaid == true) ? 1 : 0,
+      'isRecurring': (isRecurring == true) ? 1 : 0,
+      'isPaid': (isPaid == true) ? 1 : 0,
     };
   }
 
@@ -37,11 +37,11 @@ class BillReminderModel {
       id: map['id'],
       title: map['title'],
       amount: map['amount'].toDouble(),
-      dueDate: DateTime.parse(map['due_date']),
+      dueDate: DateTime.parse(map['dueDate']),
       category: map['category'],
       notes: map['notes'],
-      isRecurring: map['is_recurring'] == 1,
-      isPaid: map['is_paid'] == 1,
+      isRecurring: map['isRecurring'] == 1,
+      isPaid: map['isPaid'] == 1,
     );
   }
 

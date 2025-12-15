@@ -12,14 +12,14 @@ class TransactionsDao {
   static const createTable = '''
     create table transactions(
       id integer primary key autoincrement,
-      bank_id integer not null,
+      bankId integer not null,
       amount real not null,
       type text not null,             -- credit / debit
       balance real not null,
       category text,
       date datetime not null,
       notes text,
-      foreign key (bank_id) references bank(id) on delete cascade
+      foreign key (bankId) references bank(id) on delete cascade
     );
   ''';
 
@@ -27,11 +27,10 @@ class TransactionsDao {
   Future<int> insertTransaction(Map<String, dynamic> t) async {
     return await database.transaction((txn) async {
       // normalize inputs
-      final int bankId = (t['bank_id'] ?? t['bankId']) as int;
+      final int bankId = (t['bankId'] ?? t['bankId']) as int;
       final double amount = (t['amount'] as num).toDouble();
       final String type = (t['type'] as String).toLowerCase();
-      final String category =
-          (t['category'] as String?) ?? 'Settlement';
+      final String category = (t['category'] as String?) ?? 'Settlement';
       final String dateIso =
           (t['date'] as String?) ?? DateTime.now().toIso8601String();
       final String? notes = t['notes']?.toString();
@@ -58,13 +57,13 @@ class TransactionsDao {
         [newBalance, bankId],
       );
       if (nBank == 0) {
-        debugPrint('failed to update bank balance for bank_id=$bankId');
+        debugPrint('failed to update bank balance for bankId=$bankId');
         throw Exception('failed to update bank balance');
       }
 
       // insert transaction with computed balance snapshot
       final id = await txn.insert('transactions', {
-        'bank_id': bankId,
+        'bankId': bankId,
         'amount': amount,
         'type': type,
         'balance': newBalance,
@@ -74,7 +73,7 @@ class TransactionsDao {
       }, conflictAlgorithm: ConflictAlgorithm.abort);
       if (id <= 0) {
         debugPrint(
-          'failed to insert transaction for bank_id=$bankId type=$type amount=$amount',
+          'failed to insert transaction for bankId=$bankId type=$type amount=$amount',
         );
         throw Exception('failed to insert transaction');
       }
@@ -86,7 +85,7 @@ class TransactionsDao {
   Future<bool> getTransactionByBankId(Bank b) async {
     final rows = await database.query(
       'transactions',
-      where: 'bank_id = ?',
+      where: 'bankId = ?',
       whereArgs: [b.id!],
     );
     return rows.isNotEmpty;
@@ -98,7 +97,7 @@ class TransactionsDao {
     final data = await database.rawQuery(
       """select t.id, b.name as bankName, t.amount, t.balance, t.type, t.category, t.date, t.notes
           from transactions t
-          join bank b on t.bank_id = b.id
+          join bank b on t.bankId = b.id
           order by t.date DESC
           limit ? offset ?
       """,
@@ -123,7 +122,7 @@ class TransactionsDao {
     final args = <Object?>[];
 
     if (bankId != null) {
-      where.add('t.bank_id = ?');
+      where.add('t.bankId = ?');
       args.add(bankId);
     }
     if (type != null) {
@@ -155,9 +154,9 @@ class TransactionsDao {
 
     final rows = await database.rawQuery(
       '''
-      select t.id, t.bank_id, b.name as bankName, t.amount, t.balance, t.type, t.category, t.date, t.notes
+      select t.id, t.bankId, b.name as bankName, t.amount, t.balance, t.type, t.category, t.date, t.notes
       from transactions t
-      join bank b on t.bank_id = b.id
+      join bank b on t.bankId = b.id
       $whereSql
       order by datetime(t.date) desc
       limit ? offset ?
@@ -224,7 +223,7 @@ class TransactionsDao {
       ''' 
       select t.id, b.name as bankName, t.amount, t.balance, t.type, t.category, t.date, t.notes
       from transactions t
-      join bank b on t.bank_id = b.id
+      join bank b on t.bankId = b.id
       order by datetime(t.date) desc
       limit ?
       ''',

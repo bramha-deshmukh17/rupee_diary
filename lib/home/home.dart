@@ -179,7 +179,7 @@ class BalanceCard extends StatelessWidget {
             style: textTheme.headlineMedium?.copyWith(color: kWhite),
           ),
           khBox,
-          Text("This month", style: Theme.of(context).textTheme.bodyLarge),
+          Text("This month", style: textTheme.bodyLarge?.copyWith(color: kWhite)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

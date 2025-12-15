@@ -150,19 +150,21 @@ class _AddTransactionState extends State<AddTransaction> {
         default:
           balance = balance;
       }
-      
+
       final data = <String, dynamic>{
-        'bank_id': _selectedBankId,
+        'bankId': _selectedBankId,
         'amount': _amount,
         'balance': balance,
         'type': _types[_typeIndex].toLowerCase(),
         'date': _selectedDate.toIso8601String(),
-        'category': (_types[_typeIndex].toLowerCase() != 'expense')
-        ? _types[_typeIndex]
-        : _selectedCategory,
-        'notes': _notesController.text.trim().isEmpty
-        ? null
-        : _notesController.text.trim(),
+        'category':
+            (_types[_typeIndex].toLowerCase() != 'expense')
+                ? _types[_typeIndex]
+                : _selectedCategory,
+        'notes':
+            _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim(),
       };
       //add transaction to the db
       await DatabaseHelper.instance.transactionsDao.insertTransaction(data);
@@ -259,28 +261,29 @@ class _AddTransactionState extends State<AddTransaction> {
             khBox,
 
             // Category selector card
-            if(_typeIndex==0)
-            _TileCard(
-              icon: categoryIcons[_selectedCategory] ?? FontAwesomeIcons.shapes,
-              title: 'Category',
-              trailing: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedCategory,
-                  items:
-                      categoryIcons.keys
-                          .map(
-                            (c) => DropdownMenuItem<String>(
-                              value: c,
-                              child: Text(c),
-                            ),
-                          )
-                          .toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _selectedCategory = v);
-                  },
+            if (_typeIndex == 0)
+              _TileCard(
+                icon:
+                    categoryIcons[_selectedCategory] ?? FontAwesomeIcons.shapes,
+                title: 'Category',
+                trailing: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedCategory,
+                    items:
+                        categoryIcons.keys
+                            .map(
+                              (c) => DropdownMenuItem<String>(
+                                value: c,
+                                child: Text(c),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _selectedCategory = v);
+                    },
+                  ),
                 ),
               ),
-            ),
             khBox,
 
             //Bank selections card
