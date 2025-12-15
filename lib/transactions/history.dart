@@ -373,7 +373,7 @@ class TransactionTile extends StatelessWidget {
       where: 'id = ?',
       whereArgs: [id],
     );
-    final bankId = rows.isNotEmpty ? rows.first['bank_id'] as int : null;
+    final bankId = rows.isNotEmpty ? rows.first['bankId'] as int : null;
     if (bankId == null) {
       throw Exception('Bank not found for transaction');
     }
@@ -406,7 +406,7 @@ class TransactionTile extends StatelessWidget {
     }
 
     final tx = {
-      'bank_id': bankId,
+      'bankId': bankId,
       'amount': amount,
       'type': returnType,
       'balance': balance,

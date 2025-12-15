@@ -12,19 +12,19 @@ class BillReminderDao {
       id integer primary key autoincrement,
       title text not null,
       amount real not null,
-      due_date text not null,          -- store as ISO8601 string
+      dueDate text not null,          -- store as ISO8601 string
       category text not null,
       notes text,
-      is_recurring integer default 0,
-      is_paid integer default 0
+      isRecurring integer default 0,
+      isPaid integer default 0
     );
   ''';
 
-  // Helper: ensure due_date is a string (ISO8601) if a DateTime was provided.
+  // Helper: ensure dueDate is a string (ISO8601) if a DateTime was provided.
   Map<String, dynamic> _normalizeMap(Map<String, dynamic> m) {
     final copy = <String, dynamic>{}..addAll(m);
-    if (copy.containsKey('due_date') && copy['due_date'] is DateTime) {
-      copy['due_date'] = (copy['due_date'] as DateTime).toIso8601String();
+    if (copy.containsKey('dueDate') && copy['dueDate'] is DateTime) {
+      copy['dueDate'] = (copy['dueDate'] as DateTime).toIso8601String();
     }
     return copy;
   }
@@ -39,7 +39,7 @@ class BillReminderDao {
   // get all bill reminders
   Future<List<BillReminderModel>> getAll() async {
     final db = await database;
-    final rows = await db.query('bill_reminders', orderBy: 'due_date ASC');
+    final rows = await db.query('bill_reminders', orderBy: 'dueDate ASC');
 
     return rows.map(BillReminderModel.fromMap).toList();
   }
@@ -67,7 +67,7 @@ class BillReminderDao {
     final db = await database;
     return await db.update(
       'bill_reminders',
-      {'is_paid': isPaid ? 1 : 0},
+      {'isPaid': isPaid ? 1 : 0},
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -78,7 +78,7 @@ class BillReminderDao {
     final db = await database;
     return await db.update(
       'bill_reminders',
-      {'due_date': nextDue.toIso8601String(), 'is_paid': 0},
+      {'dueDate': nextDue.toIso8601String(), 'isPaid': 0},
       where: 'id = ?',
       whereArgs: [id],
     );

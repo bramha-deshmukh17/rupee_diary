@@ -13,7 +13,7 @@ class BankDao {
       id integer primary key autoincrement,
       name text not null,
       balance real not null,
-      is_default integer not null default 0
+      isDefault integer not null default 0
     );
   ''';
 
@@ -22,14 +22,14 @@ class BankDao {
     // If no default exists, make this one default automatically, inside a transaction.
     final id = await database.transaction<int>((txn) async {
       final existingDefault = await txn.query(
-      'bank',
-      where: 'is_default = 1',
-      limit: 1,
+        'bank',
+        where: 'isDefault = 1',
+        limit: 1,
       );
       final makeDefault = existingDefault.isEmpty;
       return await txn.insert(
-      'bank',
-      bank.copyWith(isDefault: makeDefault).toMap(),
+        'bank',
+        bank.copyWith(isDefault: makeDefault).toMap(),
       );
     });
     return id;
@@ -46,16 +46,20 @@ class BankDao {
     if (bank.id == null) {
       throw ArgumentError('Bank id required for update');
     }
-    return database.delete('bank', where: 'id = ? and is_default = ?', whereArgs: [bank.id, 0]);
+    return database.delete(
+      'bank',
+      where: 'id = ? and isDefault = ?',
+      whereArgs: [bank.id, 0],
+    );
   }
 
   //set default bank by id
   Future<void> setDefault(int id) async {
     await database.transaction((txn) async {
-      await txn.update('bank', {'is_default': 0});
+      await txn.update('bank', {'isDefault': 0});
       await txn.update(
         'bank',
-        {'is_default': 1},
+        {'isDefault': 1},
         where: 'id = ?',
         whereArgs: [id],
       );
