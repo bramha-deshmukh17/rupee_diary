@@ -158,7 +158,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       title: Row(
                         children: [
                           Icon(
-                            categoryIcons[r.category] ??
+                            kCategoryIcons[r.category] ??
                                 FontAwesomeIcons.shapes,
                             size: 20,
                             color: kPrimaryColor,

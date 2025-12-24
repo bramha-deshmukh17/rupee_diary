@@ -103,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: Appbar(title: "", isHomePage: true, badgeCount: _badgeCount),
+      appBar: Appbar(title: "Home", appbarIcons: true, badgeCount: _badgeCount),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -179,7 +179,10 @@ class BalanceCard extends StatelessWidget {
             style: textTheme.headlineMedium?.copyWith(color: kWhite),
           ),
           khBox,
-          Text("This month", style: textTheme.bodyLarge?.copyWith(color: kWhite)),
+          Text(
+            "This month",
+            style: textTheme.bodyLarge?.copyWith(color: kWhite),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -293,6 +296,8 @@ class TransactionTile extends StatelessWidget {
 
     final colorFor = (type == 'income' || type == 'borrow') ? kGreen : kRed;
 
+    final categoryLabel = normalizeCategory(category);
+
     return GestureDetector(
       onTap: showMyDialog('Note', notes, textTheme, context),
       child: Card(
@@ -301,12 +306,11 @@ class TransactionTile extends StatelessWidget {
         child: ListTile(
           contentPadding: EdgeInsets.all(10.0),
           leading: GestureDetector(
-            onTap: showMyDialog('Category', category, textTheme, context),
+            onTap: showMyDialog('Category', categoryLabel, textTheme, context),
             child: CircleAvatar(
               backgroundColor: colorFor,
               child: Icon(
-                // Ensure categoryIcons is imported from your constants or define a fallback
-                categoryIcons[category] ?? FontAwesomeIcons.question,
+                kCategoryIcons[categoryLabel] ?? FontAwesomeIcons.question,
                 size: 15,
                 color: kWhite,
               ),
@@ -350,10 +354,7 @@ class TransactionTile extends StatelessWidget {
               const SizedBox(height: 4),
               // If your model has a balance field, use it here.
               // Otherwise, you might want to hide this Text widget.
-              Text(
-                balance.toStringAsFixed(2),
-                style: textTheme.bodySmall,
-              ),
+              Text(balance.toStringAsFixed(2), style: textTheme.bodySmall),
             ],
           ),
         ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../bank/bank.dart';
+import '../budget/budget_screen.dart';
 import '../home/home.dart';
 import '../utility/constant.dart';
+
 class BottomBar extends StatefulWidget {
   final int currentIndex;
 
@@ -13,8 +15,8 @@ class BottomBar extends StatefulWidget {
 }
 
 class _BottomBarState extends State<BottomBar> {
-
-  Color _colorFor(int index) => widget.currentIndex == index ? kPrimaryColor : kGrey;
+  Color _colorFor(int index) =>
+      widget.currentIndex == index ? kPrimaryColor : kGrey;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class _BottomBarState extends State<BottomBar> {
             icon: Icon(FontAwesomeIcons.house, color: _colorFor(0)),
             tooltip: 'Home',
             onPressed: () {
-              if(widget.currentIndex != 0) {
+              if (widget.currentIndex != 0) {
                 Navigator.pushNamed(context, HomeScreen.id);
               }
             },
@@ -36,14 +38,17 @@ class _BottomBarState extends State<BottomBar> {
           IconButton(
             icon: Icon(FontAwesomeIcons.chartColumn, color: _colorFor(1)),
             tooltip: 'Statistics',
-            onPressed: () {
-            },
+            onPressed: () {},
           ),
           const SizedBox(width: 40),
           IconButton(
             icon: Icon(FontAwesomeIcons.wallet, color: _colorFor(2)),
             tooltip: 'Budgets',
-            onPressed: () {},
+            onPressed: () {
+              if(widget.currentIndex !=2){
+                Navigator.pushNamed(context, BudgetScreen.id);
+              }
+            },
           ),
           IconButton(
             icon: Icon(FontAwesomeIcons.bank, color: _colorFor(3)),

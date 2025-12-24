@@ -27,7 +27,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _hasMoreData = true; //Stop trying to load if DB is empty
 
   String? _filterType;
-  String? _filterCategory;
+  int? _filterCategoryId;
   DateTime? _filterFrom;
   DateTime? _filterTo;
   double? _minAmount;
@@ -38,7 +38,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    // Load transactions here
     _loadPageWithFilters();
   }
 
@@ -46,7 +45,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void _showFilterSheet() async {
     final initial = TransactionFilter(
       type: _filterType,
-      category: _filterCategory,
+      categoryId: _filterCategoryId, 
       from: _filterFrom,
       to: _filterTo,
       minAmount: _minAmount,
@@ -66,7 +65,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       //extract filters from result and reload data
       setState(() {
         _filterType = result.type;
-        _filterCategory = result.category;
+        _filterCategoryId = result.categoryId; // <-- CHANGED
         _filterFrom = result.from;
         _filterTo = result.to;
         _minAmount = result.minAmount;
@@ -90,7 +89,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       offset: 50 * page,
       bankId: _filterBankId,
       type: _filterType,
-      category: _filterCategory,
+      categoryId: _filterCategoryId,
       from: _filterFrom,
       to: _filterTo,
       minAmount: _minAmount,
@@ -122,59 +121,55 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return SafeArea(
-      child: Scaffold(
-        appBar: Appbar(title: 'Transactions', isBackButton: true),
-        body: ModalProgressHUD(
-          inAsyncCall: _isLoading,
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15.0),
-            child:
-                _transactions.isEmpty && !_isLoading
-                    ? Center(
-                      child: Text(
-                        'No transactions',
-                        style: textTheme.bodyLarge,
-                      ),
-                    )
-                    : ListView.builder(
-                      controller: _scrollController,
-                      itemCount: _transactions.length,
-                      itemBuilder: (context, index) {
-                        final t = _transactions[index];
-                        return TransactionTile(
-                          id: t.id!,
-                          amount: t.amount,
-                          type: t.type,
-                          bankName: t.bankName,
-                          date: t.date,
-                          balance: t.balance,
-                          category: t.category,
-                          notes: t.notes,
-                          onMarkedReturned: () {
-                            // refresh list after marking returned
-                            setState(() {
-                              page = 0;
-                              _transactions.clear();
-                              _hasMoreData = true;
-                            });
-                            _loadPageWithFilters();
-                          },
-                        );
-                      },
-                    ),
-          ),
+    return Scaffold(
+      appBar: Appbar(title: 'Transactions', isBackButton: true),
+      body: ModalProgressHUD(
+        inAsyncCall: _isLoading,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15.0),
+          child:
+              _transactions.isEmpty && !_isLoading
+                  ? Center(
+                    child: Text('No transactions', style: textTheme.bodyLarge),
+                  )
+                  : ListView.builder(
+                    controller: _scrollController,
+                    itemCount: _transactions.length,
+                    itemBuilder: (context, index) {
+                      final t = _transactions[index];
+                      return TransactionTile(
+                        id: t.id!,
+                        amount: t.amount,
+                        type: t.type,
+                        bankName: t.bankName,
+                        date: t.date,
+                        balance: t.balance,
+                        category:
+                            t.category!,
+                        notes: t.notes,
+                        onMarkedReturned: () {
+                          // refresh list after marking returned
+                          setState(() {
+                            page = 0;
+                            _transactions.clear();
+                            _hasMoreData = true;
+                          });
+                          _loadPageWithFilters();
+                        },
+                      );
+                    },
+                  ),
         ),
-
-        floatingActionButton: FloatingActionButton(
-          onPressed: _showFilterSheet,
-          backgroundColor: kPrimaryColor,
-          foregroundColor: kWhite,
-          shape: const CircleBorder(),
-          child: const Icon(FontAwesomeIcons.filter, size: 28),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       ),
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showFilterSheet,
+        backgroundColor: kPrimaryColor,
+        foregroundColor: kWhite,
+        shape: const CircleBorder(),
+        child: const Icon(FontAwesomeIcons.filter, size: 28),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }
@@ -190,6 +185,7 @@ class TransactionTile extends StatelessWidget {
   final String category;
   final String? notes;
   final VoidCallback onMarkedReturned;
+
   const TransactionTile({
     super.key,
     required this.id,
@@ -207,6 +203,11 @@ class TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorFor = type == 'income' || type == 'borrow' ? kGreen : kRed;
+
+    final categoryLabel = normalizeCategory(
+      category,
+    );
+
     return Card(
       elevation: 5,
       margin: const EdgeInsets.symmetric(vertical: 10.0),
@@ -217,13 +218,19 @@ class TransactionTile extends StatelessWidget {
                 ? _markAsReturnedDialog(textTheme: textTheme, context: context)
                 : null,
         contentPadding: const EdgeInsets.all(10.0),
-        leading: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          child: GestureDetector(
-            onTap: showMyDialog('Category', category, textTheme, context),
-            child: CircleAvatar(
-              backgroundColor: colorFor,
-              child: Icon(categoryIcons[category], size: 15, color: kWhite),
+        leading: GestureDetector(
+          onTap: showMyDialog(
+            'Category',
+            categoryLabel,
+            textTheme,
+            context,
+          ),
+          child: CircleAvatar(
+            backgroundColor: colorFor,
+            child: Icon(
+              kCategoryIcons[categoryLabel] ?? FontAwesomeIcons.question,
+              size: 15,
+              color: kWhite,
             ),
           ),
         ),
@@ -410,7 +417,7 @@ class TransactionTile extends StatelessWidget {
       'amount': amount,
       'type': returnType,
       'balance': balance,
-      'category': 'Settlement',
+      'category':kCategories.indexOf('Settlement') + 1,
       'date': now.toIso8601String(),
       'notes':
           'Return of $type on ${DateFormat('dd/MM/yy').format(date)}${prevNotes == null || prevNotes.isEmpty ? '' : ' \n$prevNotes'}',
@@ -448,7 +455,7 @@ class TransactionTile extends StatelessWidget {
 //helper modal class to store filter options
 class TransactionFilter {
   final String? type;
-  final String? category;
+  final int? categoryId; 
   final DateTime? from;
   final DateTime? to;
   final double? minAmount;
@@ -457,7 +464,7 @@ class TransactionFilter {
 
   const TransactionFilter({
     this.type,
-    this.category,
+    this.categoryId, 
     this.from,
     this.to,
     this.minAmount,
@@ -467,7 +474,7 @@ class TransactionFilter {
 
   TransactionFilter copyWith({
     String? type,
-    String? category,
+    int? categoryId, 
     DateTime? from,
     DateTime? to,
     double? minAmount,
@@ -476,7 +483,7 @@ class TransactionFilter {
   }) {
     return TransactionFilter(
       type: type ?? this.type,
-      category: category ?? this.category,
+      categoryId: categoryId ?? this.categoryId,
       from: from ?? this.from,
       to: to ?? this.to,
       minAmount: minAmount ?? this.minAmount,
@@ -502,7 +509,7 @@ class _FilterSheetState extends State<FilterSheet> {
   final _minCtrl = TextEditingController();
   final _maxCtrl = TextEditingController();
 
-  // UI-friendly selection values (use 'all' for UI -> convert to null on apply)
+  // Store category selection as id string (e.g. "1"), not name
   String _selCategory = kAll;
   String _selBank = kAll;
 
@@ -514,13 +521,13 @@ class _FilterSheetState extends State<FilterSheet> {
   @override
   void initState() {
     super.initState();
-    // Initialize with initial filter values from widget
-    // Set controllers and selection values according to previos set data that may contain nulls
     _f = widget.initial;
+
     _minCtrl.text = _f.minAmount?.toString() ?? '';
     _maxCtrl.text = _f.maxAmount?.toString() ?? '';
 
-    _selCategory = _f.category ?? kAll;
+    _selCategory =
+        _f.categoryId != null ? _f.categoryId.toString() : kAll; 
     _bankId = _f.bankId;
     _selBank = _bankId != null ? _bankId.toString() : kAll;
 
@@ -588,12 +595,13 @@ class _FilterSheetState extends State<FilterSheet> {
   void _apply() {
     final min = double.tryParse(_minCtrl.text.trim());
     final max = double.tryParse(_maxCtrl.text.trim());
-    final category = _selCategory == kAll ? null : _selCategory;
+    final categoryId =
+        _selCategory == kAll ? null : int.tryParse(_selCategory); 
     final bankId = _selBank == kAll ? null : int.tryParse(_selBank);
 
     final result = TransactionFilter(
       type: _f.type,
-      category: category,
+      categoryId: categoryId, 
       from: _f.from,
       to: _f.to,
       minAmount: min,
@@ -658,8 +666,12 @@ class _FilterSheetState extends State<FilterSheet> {
               decoration: kBaseInputDecoration.copyWith(labelText: 'Category'),
               items: [
                 const DropdownMenuItem(value: kAll, child: Text('All')),
-                ...categories.map(
-                  (c) => DropdownMenuItem(value: c, child: Text(c)),
+                ...List.generate(
+                  kCategories.length,
+                  (i) => DropdownMenuItem(
+                    value: (i + 1).toString(),
+                    child: Text(kCategories[i]),
+                  ),
                 ),
               ],
               onChanged: (v) => setState(() => _selCategory = v ?? kAll),

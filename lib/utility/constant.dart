@@ -14,16 +14,13 @@ const Color kGrey = Colors.grey;
 
 const khBox = SizedBox(height: 15.0);
 const kwBox = SizedBox(width: 15.0);
-const kBox = SizedBox(height: 15.0, width: 15.0,);
+const kBox = SizedBox(height: 15.0, width: 15.0);
 
 // app bar back icon
-const Icon kBackArrow = Icon(
-  FontAwesomeIcons.arrowLeft,
-  size: 20.0,
-);
+const Icon kBackArrow = Icon(FontAwesomeIcons.arrowLeft, size: 20.0);
 
 //Category icons
-final List<String> categories = [
+final List<String> kCategories = [
   'Food',
   'Fuel',
   'Transport',
@@ -47,7 +44,7 @@ final List<String> categories = [
   'Others',
 ];
 
-final Map<String, IconData> categoryIcons = {
+final Map<String, IconData> kCategoryIcons = {
   'Food': FontAwesomeIcons.bowlRice,
   'Fuel': FontAwesomeIcons.gasPump,
   'Transport': FontAwesomeIcons.bus,
@@ -68,7 +65,7 @@ final Map<String, IconData> categoryIcons = {
   'Travel': FontAwesomeIcons.plane,
   'Bills': FontAwesomeIcons.fileInvoice,
   'Gifts': FontAwesomeIcons.gift,
-  'Income':FontAwesomeIcons.arrowDownLong,
+  'Income': FontAwesomeIcons.arrowDownLong,
   'Lend': FontAwesomeIcons.handsHoldingCircle,
   'Borrow': FontAwesomeIcons.handsHoldingCircle,
   'Settlement': FontAwesomeIcons.handshake,
@@ -88,7 +85,7 @@ const kBaseInputDecoration = InputDecoration(
   focusedBorder: kFocusedOutlineBorder,
 );
 
-// OutlineInputBorder 
+// OutlineInputBorder
 const kOutlineInputBorder = OutlineInputBorder(
   borderSide: BorderSide(color: kSecondaryColor),
   borderRadius: BorderRadius.all(Radius.circular(8.0)),
@@ -102,3 +99,34 @@ final kBaseOutlineDecoration = InputDecoration(
   border: kOutlineInputBorder,
   focusedBorder: kFocusedOutlineInputBorder,
 );
+
+/// Converts a category value coming from DB/backup into the category *name*
+/// used by [categoryIcons] and UI dropdowns.
+/// Supports:
+/// - int id (1..N)
+/// - numeric string "1"
+/// - already-correct name "Food"
+String normalizeCategory(dynamic raw) {
+  if (raw == null) return 'Others';
+
+  // Already a proper name?
+  if (raw is String) {
+    final s = raw.trim();
+    final asInt = int.tryParse(s);
+    if (asInt == null) return s; // e.g. "Food"
+    return _categoryNameFromId(asInt);
+  }
+
+  if (raw is int) return _categoryNameFromId(raw);
+
+  // Fallback
+  final asInt = int.tryParse(raw.toString().trim());
+  if (asInt != null) return _categoryNameFromId(asInt);
+  return raw.toString().trim();
+}
+
+String _categoryNameFromId(int id) {
+  // category icon return from the id
+  if (id >= 1 && id <= kCategories.length) return kCategories[id - 1];
+  return 'Others';
+}

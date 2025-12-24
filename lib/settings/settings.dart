@@ -116,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
 
     return Scaffold(
-      appBar: Appbar(title: "Settings", isBackButton: true,),
+      appBar: Appbar(title: "Settings", isBackButton: true),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -138,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: FontAwesomeIcons.fileInvoice,
             iconColor: kPrimaryColor,
             title: "Bill Reminders",
-            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0,),
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
             onTap: () {
               Navigator.pushNamed(context, BillReminder.id);
             },
@@ -186,12 +186,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
 
-          khBox,khBox,
+          khBox, khBox,
           Center(
             child: Text(
-              "Version 1.3.5",
+              "Version 1.4.0",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final file = await DatabaseHelper.instance.exportBackupJson();
+              showSnack('backup saved at ${file.path}', context);
+              debugPrint(file.path);
+            },
+            child: const Text('export backup'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await DatabaseHelper.instance
+                    .restoreBackupFromDefaultLocation();
+                if (!context.mounted) return;
+                showSnack('backup restored successfully', context);
+              } catch (e) {
+                if (!context.mounted) return;
+                print(e);
+                showSnack('restore failed: $e', context, error: true);
+              }
+            },
+            child: const Text('restore backup'),
           ),
         ],
       ),

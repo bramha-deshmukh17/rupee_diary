@@ -3,8 +3,11 @@ class TransactionModel {
   final String bankName;
   final double amount;
   final double balance;
-  final String type; // credit / debit
-  final String category;
+  final String type;
+
+  final int? categoryId;
+  final String? category;
+
   final DateTime date;
   final String? notes;
 
@@ -14,7 +17,8 @@ class TransactionModel {
     required this.amount,
     required this.balance,
     required this.type,
-    required this.category,
+    this.categoryId,
+    this.category,
     required this.date,
     this.notes,
   });
@@ -26,7 +30,8 @@ class TransactionModel {
       'amount': amount,
       'balance': balance,
       'type': type,
-      'category': category,
+      'categoryId': categoryId,
+      'category': category, 
       'date': date.toIso8601String(),
       'notes': notes,
     };
@@ -34,14 +39,15 @@ class TransactionModel {
 
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
     return TransactionModel(
-      id: map['id'],
-      bankName: map['bankName'],
-      amount: map['amount'].toDouble(),
-      balance: map['balance'].toDouble(),
-      type: map['type'],
-      category: map['category'],
-      date: DateTime.parse(map['date']),
-      notes: map['notes'],
+      id: map['id'] as int?,
+      bankName: map['bankName'] as String,
+      amount: (map['amount'] as num).toDouble(),
+      balance: (map['balance'] as num).toDouble(),
+      type: (map['type'] as String),
+      categoryId: map['categoryId'] as int?,
+      category: ( map['category'])?.toString(),
+      date: DateTime.parse(map['date'] as String),
+      notes: map['notes'] as String?,
     );
   }
 
@@ -51,6 +57,7 @@ class TransactionModel {
     double? amount,
     double? balance,
     String? type,
+    int? categoryId,
     String? category,
     DateTime? date,
     String? notes,
@@ -61,6 +68,7 @@ class TransactionModel {
       amount: amount ?? this.amount,
       balance: balance ?? this.balance,
       type: type ?? this.type,
+      categoryId: categoryId ?? this.categoryId,
       category: category ?? this.category,
       date: date ?? this.date,
       notes: notes ?? this.notes,

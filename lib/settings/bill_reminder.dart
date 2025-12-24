@@ -147,7 +147,7 @@ class _BillReminderState extends State<BillReminder> {
 
   //show all the list of reminders in a card format
   Widget _buildReminderCard(BillReminderModel reminder) {
-    final iconData = categoryIcons[reminder.category] ?? Icons.category;
+    final iconData = kCategoryIcons[reminder.category] ?? Icons.category;
     final textTheme = TextTheme.of(context);
 
     return Card(
@@ -336,10 +336,10 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                   focusNode: _categoryNode,
                   decoration: kBaseOutlineDecoration.copyWith(
                     labelText: 'Category',
-                    prefixIcon: Icon(categoryIcons[_selectedCategory]),
+                    prefixIcon: Icon(kCategoryIcons[_selectedCategory]),
                   ),
                   items:
-                      categories.map((category) {
+                      kCategories.map((category) {
                         return DropdownMenuItem(
                           value: category,
                           child: Text(category, style: textTheme.bodyLarge),

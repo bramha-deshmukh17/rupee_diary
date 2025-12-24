@@ -21,10 +21,35 @@ class _AddTransactionState extends State<AddTransaction> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
   double _amount = 0.0;
+
   final List<String> _types = const ['Expense', 'Income', 'Lend', 'Borrow'];
   int _typeIndex = 0;
 
-  late String _selectedCategory = categoryIcons.keys.first;
+  late final List<int> _expenseCategoryIds =
+      List<int>.generate(kCategories.length, (i) => i + 1).where((id) {
+        final name = kCategories[id - 1];
+        return name != 'Income' &&
+            name != 'Lend' &&
+            name != 'Borrow' &&
+            name != 'Settlement';
+      }).toList();
+
+  late int _selectedCategoryId =
+      _expenseCategoryIds.isNotEmpty ? _expenseCategoryIds.first : 1;
+
+  String get _selectedCategoryName =>
+      (_selectedCategoryId >= 1 && _selectedCategoryId <= kCategories.length)
+          ? kCategories[_selectedCategoryId - 1]
+          : 'Others';
+
+  int _categoryIdByName(String name) {
+    final idx = kCategories.indexOf(name);
+    if (idx != -1) return idx + 1;
+
+    final othersIdx = kCategories.indexOf('Others');
+    return othersIdx != -1 ? othersIdx + 1 : 1;
+  }
+
   DateTime _selectedDate = DateTime.now();
 
   List<Bank> _banks = [];
@@ -111,6 +136,7 @@ class _AddTransactionState extends State<AddTransaction> {
   Future<void> _save() async {
     final textTheme = Theme.of(context).textTheme;
     List<Bank> banks;
+
     // Basic client-side validation
     _amount = _extractAmount();
     if (_amount <= 0.0) {
@@ -134,33 +160,32 @@ class _AddTransactionState extends State<AddTransaction> {
       //bank's balance after transaction
       double balance =
           banks.firstWhere((b) => b.id == _selectedBankId!).balance!;
-      switch (_types[_typeIndex].toLowerCase()) {
+      final typeLower = _types[_typeIndex].toLowerCase();
+
+      switch (typeLower) {
         case 'income':
-          balance += _amount; // add funds
-          break;
-        case 'expense':
-          balance -= _amount; // subtract funds
-          break;
         case 'borrow':
           balance += _amount; // add funds
           break;
+        case 'expense':
         case 'lend':
           balance -= _amount; // subtract funds
           break;
-        default:
-          balance = balance;
       }
+
+      // category must be int id
+      final int categoryId =
+          (typeLower == 'expense')
+              ? _selectedCategoryId
+              : _categoryIdByName(_types[_typeIndex]);
 
       final data = <String, dynamic>{
         'bankId': _selectedBankId,
         'amount': _amount,
         'balance': balance,
-        'type': _types[_typeIndex].toLowerCase(),
+        'type': typeLower,
         'date': _selectedDate.toIso8601String(),
-        'category':
-            (_types[_typeIndex].toLowerCase() != 'expense')
-                ? _types[_typeIndex]
-                : _selectedCategory,
+        'category': categoryId,
         'notes':
             _notesController.text.trim().isEmpty
                 ? null
@@ -260,26 +285,27 @@ class _AddTransactionState extends State<AddTransaction> {
             ),
             khBox,
 
-            // Category selector card
+            // Category selector (Expense only)
             if (_typeIndex == 0)
               _TileCard(
                 icon:
-                    categoryIcons[_selectedCategory] ?? FontAwesomeIcons.shapes,
+                    kCategoryIcons[_selectedCategoryName] ??
+                    FontAwesomeIcons.shapes,
                 title: 'Category',
                 trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCategory,
+                  child: DropdownButton<int>(
+                    value: _selectedCategoryId,
                     items:
-                        categoryIcons.keys
+                        _expenseCategoryIds
                             .map(
-                              (c) => DropdownMenuItem<String>(
-                                value: c,
-                                child: Text(c),
+                              (id) => DropdownMenuItem<int>(
+                                value: id,
+                                child: Text(kCategories[id - 1]),
                               ),
                             )
                             .toList(),
                     onChanged: (v) {
-                      if (v != null) setState(() => _selectedCategory = v);
+                      if (v != null) setState(() => _selectedCategoryId = v);
                     },
                   ),
                 ),
