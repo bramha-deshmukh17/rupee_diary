@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../bank/bank.dart';
 import '../db/database_helper.dart';
 import '../db/model/bank.dart';
+import '../db/model/category.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
 import '../utility/snack.dart';
@@ -25,30 +26,14 @@ class _AddTransactionState extends State<AddTransaction> {
   final List<String> _types = const ['Expense', 'Income', 'Lend', 'Borrow'];
   int _typeIndex = 0;
 
-  late final List<int> _expenseCategoryIds =
-      List<int>.generate(kCategories.length, (i) => i + 1).where((id) {
-        final name = kCategories[id - 1];
-        return name != 'Income' &&
-            name != 'Lend' &&
-            name != 'Borrow' &&
-            name != 'Settlement';
-      }).toList();
+  //list of all categories loaded from db
+  List<Category> _categories = [];
 
-  late int _selectedCategoryId =
-      _expenseCategoryIds.isNotEmpty ? _expenseCategoryIds.first : 1;
+  //list of only expense categories for dropdown
+  List<Category> _expenseCategories = [];
 
-  String get _selectedCategoryName =>
-      (_selectedCategoryId >= 1 && _selectedCategoryId <= kCategories.length)
-          ? kCategories[_selectedCategoryId - 1]
-          : 'Others';
-
-  int _categoryIdByName(String name) {
-    final idx = kCategories.indexOf(name);
-    if (idx != -1) return idx + 1;
-
-    final othersIdx = kCategories.indexOf('Others');
-    return othersIdx != -1 ? othersIdx + 1 : 1;
-  }
+  //currently selected expense category
+  Category? _selectedCategory;
 
   DateTime _selectedDate = DateTime.now();
 
@@ -59,6 +44,7 @@ class _AddTransactionState extends State<AddTransaction> {
   void initState() {
     super.initState();
     _loadBanks();
+    _loadCategories(); //load categories and icons from db on screen init
   }
 
   @override
@@ -66,6 +52,64 @@ class _AddTransactionState extends State<AddTransaction> {
     _amountController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  //load category names and icons from db
+  Future<void> _loadCategories() async {
+    try {
+      final categories =
+          await DatabaseHelper.instance.categoryDao.getAllCategories();
+
+      if (!mounted) return;
+
+      setState(() {
+        _categories = categories;
+
+        //filter only expense categories (exclude special types)
+        _expenseCategories =
+            categories.where((c) {
+              final n = c.name.toLowerCase();
+              return n != 'income' &&
+                  n != 'lend' &&
+                  n != 'borrow' &&
+                  n != 'settlement';
+            }).toList();
+
+        //set default selected category for expense
+        if (_selectedCategory == null && _expenseCategories.isNotEmpty) {
+          _selectedCategory = _expenseCategories.first;
+        }
+      });
+    } catch (_) {
+      showSnack("Failed to load categories. Try again later...!", context, error: true);
+    }
+  }
+
+  //load banks data from the db and also default selected bank
+  Future<void> _loadBanks() async {
+    try {
+      final data = await DatabaseHelper.instance.bankDao.getBanks();
+      if (!mounted) return;
+      setState(() {
+        _banks = data;
+        //prefer default bank, else first, else create a dummy bank to avoid null id crash
+        final def = _banks.firstWhere(
+          (b) => (b.isDefault ?? false),
+          orElse:
+              () =>
+                  _banks.isNotEmpty
+                      ? _banks.first
+                      : Bank(id: null, name: '', balance: 0),
+        );
+        _selectedBankId = def.id;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _banks = [];
+        _selectedBankId = null;
+      });
+    }
   }
 
   //date picker for the transaction date
@@ -97,37 +141,23 @@ class _AddTransactionState extends State<AddTransaction> {
     });
   }
 
-  //load banks data from the db and also default selected bank
-  Future<void> _loadBanks() async {
-    try {
-      final data = await DatabaseHelper.instance.bankDao.getBanks();
-      if (!mounted) return;
-      setState(() {
-        _banks = data;
-        // Prefer default bank, else first else creeate a non null dummy bank to avoid app crash due to null id
-        final def = _banks.firstWhere(
-          (b) => (b.isDefault ?? false),
-          orElse:
-              () =>
-                  _banks.isNotEmpty
-                      ? _banks.first
-                      : Bank(id: null, name: '', balance: 0),
-        );
-        _selectedBankId = def.id;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _banks = [];
-        _selectedBankId = null;
-      });
-    }
-  }
-
   // Helper to extract numeric value from formatted controller text
   double _extractAmount() {
     final raw = _amountController.text.replaceAll(RegExp(r'[^\d.]'), '');
     return double.tryParse(raw) ?? 0;
+  }
+
+  //resolve category id for non-expense types from db (Income/Lend/Borrow/Settlement)
+  int? _categoryIdByTypeName(String typeName) {
+    final lower = typeName.toLowerCase();
+    try {
+      final c = _categories.firstWhere(
+        (cat) => cat.name.toLowerCase() == lower,
+      );
+      return c.id;
+    } catch (_) {
+      return null;
+    }
   }
 
   //save data to the db of the transaction
@@ -137,7 +167,7 @@ class _AddTransactionState extends State<AddTransaction> {
     final textTheme = Theme.of(context).textTheme;
     List<Bank> banks;
 
-    // Basic client-side validation
+    //basic client-side validation
     _amount = _extractAmount();
     if (_amount <= 0.0) {
       showSnack('Enter a valid amount', context, error: true);
@@ -165,19 +195,32 @@ class _AddTransactionState extends State<AddTransaction> {
       switch (typeLower) {
         case 'income':
         case 'borrow':
-          balance += _amount; // add funds
+          balance += _amount; //add funds
           break;
         case 'expense':
         case 'lend':
-          balance -= _amount; // subtract funds
+          balance -= _amount; //subtract funds
           break;
       }
 
-      // category must be int id
-      final int categoryId =
-          (typeLower == 'expense')
-              ? _selectedCategoryId
-              : _categoryIdByName(_types[_typeIndex]);
+      int? categoryId;
+
+      if (typeLower == 'expense') {
+        //for expense use selected category from db
+        categoryId = _selectedCategory?.id;
+      } else {
+        //for income/lend/borrow use special category rows in db
+        categoryId = _categoryIdByTypeName(_types[_typeIndex]);
+      }
+
+      if (categoryId == null) {
+        showSnack(
+          'Category not found in database. Please check categories setup.',
+          context,
+          error: true,
+        );
+        return;
+      }
 
       final data = <String, dynamic>{
         'bankId': _selectedBankId,
@@ -185,7 +228,7 @@ class _AddTransactionState extends State<AddTransaction> {
         'balance': balance,
         'type': typeLower,
         'date': _selectedDate.toIso8601String(),
-        'category': categoryId,
+        'categoryId': categoryId,
         'notes':
             _notesController.text.trim().isEmpty
                 ? null
@@ -205,6 +248,10 @@ class _AddTransactionState extends State<AddTransaction> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+
+    //pick icon for currently selected category from db, fallback to generic icon
+    final IconData categoryIcon =
+        _selectedCategory?.icon ?? FontAwesomeIcons.shapes;
 
     return Scaffold(
       appBar: Appbar(title: 'Add Transaction', isBackButton: true),
@@ -242,9 +289,9 @@ class _AddTransactionState extends State<AddTransaction> {
                       contentPadding: EdgeInsets.zero,
                     ),
                     onChanged: (value) {
-                      // sanitize & format
+                      //sanitize & format
                       validateAmt(value);
-                      // store numeric amount
+                      //store numeric amount
                       _amount = _extractAmount();
                     },
                   ),
@@ -288,24 +335,22 @@ class _AddTransactionState extends State<AddTransaction> {
             // Category selector (Expense only)
             if (_typeIndex == 0)
               _TileCard(
-                icon:
-                    kCategoryIcons[_selectedCategoryName] ??
-                    FontAwesomeIcons.shapes,
+                icon: categoryIcon,
                 title: 'Category',
                 trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _selectedCategoryId,
+                  child: DropdownButton<Category>(
+                    value: _selectedCategory,
                     items:
-                        _expenseCategoryIds
+                        _expenseCategories
                             .map(
-                              (id) => DropdownMenuItem<int>(
-                                value: id,
-                                child: Text(kCategories[id - 1]),
+                              (cat) => DropdownMenuItem<Category>(
+                                value: cat,
+                                child: Text(cat.name),
                               ),
                             )
                             .toList(),
                     onChanged: (v) {
-                      if (v != null) setState(() => _selectedCategoryId = v);
+                      setState(() => _selectedCategory = v);
                     },
                   ),
                 ),
@@ -379,9 +424,10 @@ class _AddTransactionState extends State<AddTransaction> {
               decoration: kBaseInputDecoration.copyWith(labelText: 'Notes...'),
             ),
 
-            khBox, khBox,
+            khBox,
+            khBox,
 
-            // CTA
+            // Add button
             SizedBox(
               height: 48,
               child: ElevatedButton(
@@ -486,7 +532,6 @@ class _AddTransactionState extends State<AddTransaction> {
                   Navigator.pop(context);
                   Navigator.pushNamed(context, BankScreen.id);
                 },
-
                 child: Text(
                   'Add Bank',
                   style: textTheme.bodyMedium?.copyWith(color: kPrimaryColor),

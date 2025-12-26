@@ -7,6 +7,9 @@ class TransactionModel {
 
   final int? categoryId;
   final String? category;
+  final int? iconCodePoint;
+  final String? iconFontFamily;
+  final String? iconFontPackage;
 
   final DateTime date;
   final String? notes;
@@ -19,6 +22,9 @@ class TransactionModel {
     required this.type,
     this.categoryId,
     this.category,
+    this.iconCodePoint,
+    this.iconFontFamily,
+    this.iconFontPackage,
     required this.date,
     this.notes,
   });
@@ -31,7 +37,10 @@ class TransactionModel {
       'balance': balance,
       'type': type,
       'categoryId': categoryId,
-      'category': category, 
+      'category': category,
+      'icon_code_point': iconCodePoint,
+      'icon_font_family': iconFontFamily,
+      'icon_font_package': iconFontPackage,
       'date': date.toIso8601String(),
       'notes': notes,
     };
@@ -45,7 +54,10 @@ class TransactionModel {
       balance: (map['balance'] as num).toDouble(),
       type: (map['type'] as String),
       categoryId: map['categoryId'] as int?,
-      category: ( map['category'])?.toString(),
+      category: (map['category'])?.toString(),
+      iconCodePoint: map['icon_code_point'] as int?,
+      iconFontFamily: map['icon_font_family'] as String?,
+      iconFontPackage: map['icon_font_package'] as String?,
       date: DateTime.parse(map['date'] as String),
       notes: map['notes'] as String?,
     );
@@ -59,6 +71,9 @@ class TransactionModel {
     String? type,
     int? categoryId,
     String? category,
+    int? iconCodePoint,
+    String? iconFontFamily,
+    String? iconFontPackage,
     DateTime? date,
     String? notes,
   }) {
@@ -70,6 +85,9 @@ class TransactionModel {
       type: type ?? this.type,
       categoryId: categoryId ?? this.categoryId,
       category: category ?? this.category,
+      iconCodePoint: iconCodePoint ?? this.iconCodePoint,
+      iconFontFamily: iconFontFamily ?? this.iconFontFamily,
+      iconFontPackage: iconFontPackage ?? this.iconFontPackage,
       date: date ?? this.date,
       notes: notes ?? this.notes,
     );

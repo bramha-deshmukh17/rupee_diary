@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
+import '../db/model/category.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
 import '../services/reminder_notification.dart';
@@ -20,10 +21,14 @@ class _BillReminderState extends State<BillReminder> {
   List<BillReminderModel> _reminders = [];
   bool _isLoading = true;
 
+  //list of categories from db for mapping name -> icon
+  List<Category> _categories = [];
+
   @override
   void initState() {
     super.initState();
     _loadReminders();
+    _loadCategories(); //load category data from db for icons
   }
 
   //load all the available bill reminders from the database
@@ -40,6 +45,19 @@ class _BillReminderState extends State<BillReminder> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       showSnack('Failed to load reminders', context, error: true);
+    }
+  }
+
+  //load all categories from db so reminder list can use same icons as rest of app
+  Future<void> _loadCategories() async {
+    try {
+      final cats = await DatabaseHelper.instance.categoryDao.getAllCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = cats;
+      });
+    } catch (_) {
+      //ignore errors, ui will fallback to default icon
     }
   }
 
@@ -147,8 +165,18 @@ class _BillReminderState extends State<BillReminder> {
 
   //show all the list of reminders in a card format
   Widget _buildReminderCard(BillReminderModel reminder) {
-    final iconData = kCategoryIcons[reminder.category] ?? Icons.category;
-    final textTheme = TextTheme.of(context);
+    //find matching category from db using name, fallback to default icon
+    final Category? cat = _categories.firstWhere(
+      (c) => c.name == reminder.category,
+      orElse:
+          () =>
+              _categories.isNotEmpty
+                  ? _categories.first
+                  : Category(id: -1, name: '', icon: Icons.category),
+    );
+    final iconData = (cat != null && cat.id != -1) ? cat.icon : Icons.category;
+
+    final textTheme = Theme.of(context).textTheme;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -159,7 +187,7 @@ class _BillReminderState extends State<BillReminder> {
           backgroundColor: kPrimaryColor.withOpacity(0.1),
           child: Icon(iconData, color: kPrimaryColor, size: 18),
         ),
-        title: Text(reminder.title, style: TextTheme.of(context).bodyLarge),
+        title: Text(reminder.title, style: textTheme.bodyLarge),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -239,8 +267,13 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
   final FocusNode _notesFocusNode = FocusNode();
 
   DateTime _selectedDate = DateTime.now();
+
+  //store selected category name (matches Category.name in db)
   String _selectedCategory = 'Utilities';
   bool _isRecurring = false;
+
+  //list of categories from db for dropdown
+  List<Category> _categories = [];
 
   @override
   void initState() {
@@ -252,6 +285,26 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
       _selectedDate = widget.reminder!.dueDate;
       _selectedCategory = widget.reminder!.category.toString();
       _isRecurring = widget.reminder!.isRecurring.toString() == 'true';
+    }
+    _loadCategories(); //load categories and icons from db for dropdown
+  }
+
+  //load categories from db so dropdown stays in sync with categories table
+  Future<void> _loadCategories() async {
+    try {
+      final cats = await DatabaseHelper.instance.categoryDao.getAllCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = cats;
+
+        //if selected category not present in db, fallback to first category
+        final exists = _categories.any((c) => c.name == _selectedCategory);
+        if (!exists && _categories.isNotEmpty) {
+          _selectedCategory = _categories.first.name;
+        }
+      });
+    } catch (_) {
+      //ignore errors and keep existing selection
     }
   }
 
@@ -269,6 +322,20 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+
+    //get icon for currently selected category from db
+    final Category? selectedCat = _categories.firstWhere(
+      (c) => c.name == _selectedCategory,
+      orElse:
+          () =>
+              _categories.isNotEmpty
+                  ? _categories.first
+                  : Category(id: -1, name: '', icon: Icons.category),
+    );
+    final categoryIcon =
+        (selectedCat != null && selectedCat.id != -1)
+            ? selectedCat.icon
+            : Icons.category;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -332,19 +399,25 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                 khBox,
                 DropdownButtonFormField<String>(
                   style: textTheme.bodyLarge,
-                  initialValue: _selectedCategory,
+                  value: _selectedCategory,
                   focusNode: _categoryNode,
                   decoration: kBaseOutlineDecoration.copyWith(
                     labelText: 'Category',
-                    prefixIcon: Icon(kCategoryIcons[_selectedCategory]),
+                    //use icon from db category instead of constant.dart
+                    prefixIcon: Icon(categoryIcon),
                   ),
                   items:
-                      kCategories.map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category, style: textTheme.bodyLarge),
-                        );
-                      }).toList(),
+                      _categories
+                          .map(
+                            (category) => DropdownMenuItem(
+                              value: category.name,
+                              child: Text(
+                                category.name,
+                                style: textTheme.bodyLarge,
+                              ),
+                            ),
+                          )
+                          .toList(),
                   onChanged: (value) {
                     setState(() {
                       _selectedCategory = value!;
@@ -540,7 +613,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
         if (mounted) showSnack('Reminder updated', context);
       }
 
-      //when saved/updated successfully callback will call save method from invoking class 
+      //when saved/updated successfully callback will call save method from invoking class
       //i.e. BillReminder class to reload the data from db using loadreminder function
       widget.onSave();
       if (!mounted) return;

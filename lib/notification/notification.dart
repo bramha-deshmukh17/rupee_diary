@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
+import '../db/model/category.dart'; //load category names and icons from db
 import '../services/reminder_notification.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
@@ -20,14 +21,31 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   List<BillReminderModel> _items = [];
   bool _isLoading = true;
 
+  //list of categories from db for mapping name -> icon
+  List<Category> _categories = [];
+
   @override
   void initState() {
     super.initState();
     _loadPendingNotifications();
+    _loadCategories(); //load categories and icons from db so notifications use same icons as rest of app
+  }
+
+  //load all categories from db so notification list can use icon info from db instead of constant.dart
+  Future<void> _loadCategories() async {
+    try {
+      final cats = await DatabaseHelper.instance.categoryDao.getAllCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = cats;
+      });
+    } catch (_) {
+      //ignore errors and fallback to default icon when category is not available
+    }
   }
 
   //here we will load the data of pending notification i.e. notification for reminder which are yet to be marked as paid
-  //by filtering it using due date of the reminder 
+  //by filtering it using due date of the reminder
   Future<void> _loadPendingNotifications() async {
     setState(() => _isLoading = true);
 
@@ -83,7 +101,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       return;
     }
 
-    //Notifications 
+    //Notifications
     try {
       if (r.isRecurring == true) {
         // Fetch the latest reminder row from DB (important)
@@ -138,7 +156,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     }
 
     return Scaffold(
-      appBar: Appbar(title: 'Notifications', isBackButton: true,),
+      appBar: Appbar(title: 'Notifications', isBackButton: true),
       body:
           _items.isEmpty
               ? Center(
@@ -152,14 +170,32 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 itemCount: _items.length,
                 itemBuilder: (context, i) {
                   final r = _items[i];
+
+                  //find matching category from db using reminder.category, fallback to generic icon
+                  final Category? cat = _categories.firstWhere(
+                    (c) => c.name == r.category,
+                    orElse:
+                        () =>
+                            _categories.isNotEmpty
+                                ? _categories.first
+                                : Category(
+                                  id: -1,
+                                  name: '',
+                                  icon: FontAwesomeIcons.shapes,
+                                ),
+                  );
+                  final iconData =
+                      (cat != null && cat.id != -1)
+                          ? cat.icon
+                          : FontAwesomeIcons.shapes;
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: ListTile(
                       title: Row(
                         children: [
                           Icon(
-                            kCategoryIcons[r.category] ??
-                                FontAwesomeIcons.shapes,
+                            iconData, //category icon taken from db
                             size: 20,
                             color: kPrimaryColor,
                           ),

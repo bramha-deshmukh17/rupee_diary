@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../utility/constant.dart';
 import 'operations/bank.dart';
 import 'operations/bill_reminder.dart';
 import 'operations/category.dart';
@@ -57,24 +56,11 @@ class DatabaseHelper {
     await db.execute(BankDao.createTable);
 
     await db.execute(CategoryDao.createTable);
-    await _seedDefaultCategories(db);
 
     await db.execute(TransactionsDao.createTable);
     await db.execute(BillReminderDao.createTable);
   }
 
-  Future<void> _seedDefaultCategories(Database db) async {
-    final batch = db.batch();
-    for (final e in kCategoryIcons.entries) {
-      batch.insert('categories', {
-        'name': e.key,
-        'icon_code_point': e.value.codePoint,
-        'icon_font_family': e.value.fontFamily,
-        'icon_font_package': e.value.fontPackage,
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
-    }
-    await batch.commit(noResult: true);
-  }
 
   /// export to app documents (no permissions)
   Future<File> exportBackupJson() async {

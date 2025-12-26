@@ -294,9 +294,21 @@ class TransactionTile extends StatelessWidget {
     final bankName = transaction.bankName;
     final DateTime date = transaction.date;
 
+    final iconCodePoint = transaction.iconCodePoint;
+    final iconFontFamily = transaction.iconFontFamily;
+    final iconFontPackage = transaction.iconFontPackage;
+
     final colorFor = (type == 'income' || type == 'borrow') ? kGreen : kRed;
 
-    final categoryLabel = normalizeCategory(category);
+    //use icon data coming from db, fallback to a generic icon if not present
+    final IconData iconData =
+        (iconCodePoint != null)
+            ? IconData(
+              iconCodePoint,
+              fontFamily: iconFontFamily,
+              fontPackage: iconFontPackage,
+            )
+            : FontAwesomeIcons.question;
 
     return GestureDetector(
       onTap: showMyDialog('Note', notes, textTheme, context),
@@ -304,16 +316,12 @@ class TransactionTile extends StatelessWidget {
         elevation: 5,
         margin: const EdgeInsets.symmetric(vertical: 6.0),
         child: ListTile(
-          contentPadding: EdgeInsets.all(10.0),
+          contentPadding: const EdgeInsets.all(10.0),
           leading: GestureDetector(
-            onTap: showMyDialog('Category', categoryLabel, textTheme, context),
+            onTap: showMyDialog('Category', category, textTheme, context),
             child: CircleAvatar(
               backgroundColor: colorFor,
-              child: Icon(
-                kCategoryIcons[categoryLabel] ?? FontAwesomeIcons.question,
-                size: 15,
-                color: kWhite,
-              ),
+              child: Icon(iconData, size: 15, color: kWhite),
             ),
           ),
           title: Column(

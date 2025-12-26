@@ -16,7 +16,6 @@ class TransactionsDao {
       amount real not null,
       type text not null,
       balance real not null,
-      category text,
       categoryId integer,
       date text not null,
       notes text,
@@ -36,18 +35,6 @@ class TransactionsDao {
       final String? notes = t['notes']?.toString();
 
       int? categoryId = t['categoryId'] as int?;
-      final String? category = t['category']?.toString();
-
-      if (categoryId == null && category != null && category.isNotEmpty) {
-        final rows = await txn.query(
-          'categories',
-          columns: ['id'],
-          where: 'name = ?',
-          whereArgs: [category],
-          limit: 1,
-        );
-        categoryId = rows.isEmpty ? null : rows.first['id'] as int;
-      }
 
       final bankRows = await txn.query(
         'bank',
@@ -75,7 +62,6 @@ class TransactionsDao {
         'amount': amount,
         'balance': newBalance,
         'type': type,
-        'category': category, // optional legacy
         'categoryId': categoryId,
         'date': dateIso,
         'notes': notes,
@@ -105,7 +91,10 @@ class TransactionsDao {
         t.balance,
         t.type,
         t.categoryId,
-        c.name as categoryName,
+        c.name as category,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package,
         t.date,
         t.notes
       from transactions t
@@ -144,7 +133,7 @@ class TransactionsDao {
       args.add(type);
     }
     if (categoryId != null) {
-      where.add('CAST(category AS INTEGER) = ?');
+      where.add('cast(categoryId as integer) = ?');
       args.add(categoryId);
     }
     if (from != null) {
@@ -168,9 +157,23 @@ class TransactionsDao {
 
     final rows = await database.rawQuery(
       '''
-      select t.id, t.bankId, b.name as bankName, t.amount, t.balance, t.type, t.category, t.date, t.notes
+      select
+        t.id,
+        t.bankId,
+        b.name as bankName,
+        t.amount,
+        t.balance,
+        t.type,
+        t.categoryId,
+        c.name as category,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package,
+        t.date,
+        t.notes
       from transactions t
       join bank b on t.bankId = b.id
+      left join categories c on t.categoryId = c.id
       $whereSql
       order by datetime(t.date) desc
       limit ? offset ?
@@ -235,9 +238,22 @@ class TransactionsDao {
   Future<List<TransactionModel>> getRecentTransactions() async {
     final rows = await database.rawQuery(
       ''' 
-      select t.id, b.name as bankName, t.amount, t.balance, t.type, t.category, t.date, t.notes
+      select
+        t.id,
+        b.name as bankName,
+        t.amount,
+        t.balance,
+        t.type,
+        t.categoryId,
+        c.name as category,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package,
+        t.date,
+        t.notes
       from transactions t
       join bank b on t.bankId = b.id
+      left join categories c on t.categoryId = c.id
       order by datetime(t.date) desc
       limit ?
       ''',
@@ -257,7 +273,7 @@ class TransactionsDao {
       for (final t in list) {
         debugPrint(
           '🧾 ID: ${t.id} | BANK: ${t.bankName} | ${t.type} | ₹${t.amount} | BALANCE: ${t.balance}'
-          '| DATE: ${t.date.toIso8601String()} | CATEGORY: ${t.category} | NOTES: ${t.notes}',
+          '| DATE: ${t.date.toIso8601String()} | CATEGORY: ${t.categoryId} | NOTES: ${t.notes}',
         );
       }
     }

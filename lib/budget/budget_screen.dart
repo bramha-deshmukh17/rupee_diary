@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 
+import '../db/model/category.dart';
 import '../utility/constant.dart';
 import '../utility/appbar.dart';
 import '../utility/bottombar.dart';
@@ -29,13 +30,50 @@ class BudgetScreen extends StatelessWidget {
       ),
       bottomNavigationBar: const BottomBar(currentIndex: 2),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          // showDialog(
+          //   context: context,
+          //   builder: (context) => AddBudget(onSave: loadBudgets),
+          // );
+        },
         backgroundColor: kPrimaryColor,
         foregroundColor: kWhite,
         shape: const CircleBorder(),
         child: const Icon(FontAwesomeIcons.plus, size: 28),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+    );
+  }
+}
+
+class AddBudget extends StatefulWidget {
+  final VoidCallback onSave;
+  const AddBudget({super.key, required this.onSave});
+
+  @override
+  State<AddBudget> createState() => _AddBudgetState();
+}
+
+class _AddBudgetState extends State<AddBudget> {
+  late List<Category> categoriesData;
+
+  @override
+  void initState() {
+    loadCategories();
+    super.initState();
+  }
+
+  void loadCategories() async {}
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Column(
+        children: [
+          TextField(),
+          //DropdownButtonFormField(items: categoriesData.map((element)=>DropdownMenuItem(value: element.data,child: child)), onChanged: onChanged),
+        ],
+      ),
     );
   }
 }
@@ -112,14 +150,11 @@ class CategoryBudgetSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    // Because the parent wraps this widget in Expanded, we are allowed to use
-    // a Column with an Expanded ListView here.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text("Category Budgets", style: textTheme.headlineMedium),
         khBox,
-        // ListView must be inside Expanded to receive bounded height
         Expanded(
           child: ListView(
             padding: EdgeInsets.zero,
@@ -149,8 +184,6 @@ class CategoryBudgetSection extends StatelessWidget {
     );
   }
 }
-
-// keep your existing CategoryBudgetCard (unchanged)
 
 class CategoryBudgetCard extends StatelessWidget {
   final IconData icon;

@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
+import '../model/category.dart';
+
 class CategoryDao {
   final Database database;
   CategoryDao(this.database);
@@ -23,5 +25,10 @@ class CategoryDao {
       limit: 1,
     );
     return rows.isEmpty ? null : rows.first['id'] as int;
+  }
+
+  Future<List<Category>> getAllCategories() async {
+    final rows = await database.query('categories', orderBy: 'name ASC');
+    return rows.map((e) => Category.fromMap(e)).toList();
   }
 }
