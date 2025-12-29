@@ -53,7 +53,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Apply the saved theme setting (best-effort)
       try {
-        context.read<ThemeProvider>().toggleTheme(_settings['theme'] == 'enabled');
+        context.read<ThemeProvider>().toggleTheme(
+          _settings['theme'] == 'enabled',
+        );
       } catch (e) {
         if (mounted) {
           showSnack('Failed to apply theme', context, error: true);
@@ -80,14 +82,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       await DatabaseHelper.instance.settingDao.updateSetting(
-        Setting(settingsKey: key, settingsValue: newValue),
+        SettingModel(settingsKey: key, settingsValue: newValue),
       );
 
       if (!mounted) return;
       final msg = switch (key) {
-        'notifications' => 'Notifications ${isEnabled ? 'enabled' : 'disabled'}',
+        'notifications' =>
+          'Notifications ${isEnabled ? 'enabled' : 'disabled'}',
         'theme' => 'Dark mode ${isEnabled ? 'enabled' : 'disabled'}',
-        _ => 'Setting updated'
+        _ => 'Setting updated',
       };
       showSnack(msg, context);
     } catch (e) {
@@ -130,7 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (val) {
                 _handleToggle('notifications', val);
               },
-              activeColor: kSecondaryColor,
+              activeThumbColor: kSecondaryColor,
             ),
           ),
 
@@ -153,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: Switch(
               value: isDarkMode,
               onChanged: (val) => {_handleToggle('theme', val)},
-              activeColor: kSecondaryColor,
+              activeThumbColor: kSecondaryColor,
             ),
           ),
 
@@ -210,7 +213,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 showSnack('backup restored successfully', context);
               } catch (e) {
                 if (!context.mounted) return;
-                print(e);
+                debugPrint(e.toString());
                 showSnack('restore failed: $e', context, error: true);
               }
             },

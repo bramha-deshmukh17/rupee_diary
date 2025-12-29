@@ -66,7 +66,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
     try {
       await DatabaseHelper.instance.settingDao.updateSetting(
-        Setting(settingsKey: key, settingsValue: newValue),
+        SettingModel(settingsKey: key, settingsValue: newValue),
       );
 
       if (!mounted) return;
@@ -128,7 +128,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 trailing: Switch(
                   value: _settings['authentication'] == 'enabled',
                   onChanged: (val) => {_handleToggle('authentication', val)},
-                  activeColor: kSecondaryColor,
+                  activeThumbColor: kSecondaryColor,
                 ),
                 onTap: () {},
               ),
@@ -168,14 +168,14 @@ class _SecurityScreenState extends State<SecurityScreen> {
 class PasswordDialog extends StatefulWidget {
   final VoidCallback onSave;
 
-  const PasswordDialog({Key? key, required this.onSave}) : super(key: key);
+  const PasswordDialog({super.key, required this.onSave});
 
   @override
-  _PasswordDialogState createState() => _PasswordDialogState();
+  State<PasswordDialog> createState() => _PasswordDialogState();
 }
 
 class _PasswordDialogState extends State<PasswordDialog> {
-  TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   @override
   void initState() {
@@ -246,7 +246,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
     }
     try {
       await DatabaseHelper.instance.settingDao.updateSetting(
-        Setting(settingsKey: 'password', settingsValue: newPwd),
+        SettingModel(settingsKey: 'password', settingsValue: newPwd),
       );
       widget.onSave();
       if (mounted) showSnack('New PIN saved', context);

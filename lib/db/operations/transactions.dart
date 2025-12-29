@@ -70,7 +70,7 @@ class TransactionsDao {
   }
 
   //  check transactions exist for a bank
-  Future<bool> getTransactionByBankId(Bank b) async {
+  Future<bool> getTransactionByBankId(BankModel b) async {
     final rows = await database.query(
       'transactions',
       where: 'bankId = ?',
@@ -195,7 +195,7 @@ class TransactionsDao {
 
     await database.transaction((txn) async {
       incomeResult = await txn.rawQuery('''
-        select coalesce(sum(amount), 0) as total_income
+        select coalesce(sum(amount), 0) as totalIncome
         from transactions
         where type = 'income'
           and date(date) >= date('now', 'start of month', 'localtime')
@@ -203,7 +203,7 @@ class TransactionsDao {
       ''');
 
       expenseResult = await txn.rawQuery('''
-        select coalesce(sum(amount), 0) as total_expense
+        select coalesce(sum(amount), 0) as totalExpense
         from transactions
         where type = 'expense'
           and date(date) >= date('now', 'start of month', 'localtime')
@@ -211,7 +211,7 @@ class TransactionsDao {
       ''');
 
       balanceResult = await txn.rawQuery('''
-        select coalesce(sum(balance), 0) as total_balance
+        select coalesce(sum(balance), 0) as totalBalance
         from bank
       ''');
     });
@@ -224,13 +224,13 @@ class TransactionsDao {
       return double.tryParse(v.toString()) ?? 0.0;
     }
 
-    final totalIncome = toDouble(incomeResult.first['total_income']);
-    final totalExpense = toDouble(expenseResult.first['total_expense']);
-    final totalBalance = toDouble(balanceResult.first['total_balance']);
+    final totalIncome = toDouble(incomeResult.first['totalIncome']);
+    final totalExpense = toDouble(expenseResult.first['totalExpense']);
+    final totalBalance = toDouble(balanceResult.first['totalBalance']);
     return {
-      'total_income': totalIncome,
-      'total_expense': totalExpense,
-      'total_balance': totalBalance,
+      'totalIncome': totalIncome,
+      'totalExpense': totalExpense,
+      'totalBalance': totalBalance,
     };
   }
 
@@ -260,6 +260,26 @@ class TransactionsDao {
       [5],
     );
     return rows.map((e) => TransactionModel.fromMap(e)).toList();
+  }
+
+  Future<List<Map<int, double?>>> getCategoryExpense() async {
+    final rows = await database.rawQuery('''
+      select categoryId, sum(amount) as totalAmount
+      from transactions
+      where type = 'expense' and categoryId is not null
+      group by categoryId
+      ''');
+
+    final List<Map<int, double?>> result = [];
+    for (final e in rows) {
+      final rawId = e['categoryId'];
+      if (rawId == null || rawId is! num) continue;
+
+      final id = rawId.toInt();
+      final total = (e['totalAmount'] as num?)?.toDouble();
+      result.add({id: total});
+    }
+    return result;
   }
 
   // ===========================

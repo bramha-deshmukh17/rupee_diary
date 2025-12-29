@@ -5,6 +5,7 @@ import '../bank/bank.dart';
 import '../db/database_helper.dart';
 import '../db/model/bank.dart';
 import '../db/model/category.dart';
+import '../utility/amount_input.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
 import '../utility/snack.dart';
@@ -27,17 +28,17 @@ class _AddTransactionState extends State<AddTransaction> {
   int _typeIndex = 0;
 
   //list of all categories loaded from db
-  List<Category> _categories = [];
+  List<CategoryModel> _categories = [];
 
   //list of only expense categories for dropdown
-  List<Category> _expenseCategories = [];
+  List<CategoryModel> _expenseCategories = [];
 
   //currently selected expense category
-  Category? _selectedCategory;
+  CategoryModel? _selectedCategory;
 
   DateTime _selectedDate = DateTime.now();
 
-  List<Bank> _banks = [];
+  List<BankModel> _banks = [];
   int? _selectedBankId;
 
   @override
@@ -99,7 +100,7 @@ class _AddTransactionState extends State<AddTransaction> {
               () =>
                   _banks.isNotEmpty
                       ? _banks.first
-                      : Bank(id: null, name: '', balance: 0),
+                      : BankModel(id: null, name: '', balance: 0),
         );
         _selectedBankId = def.id;
       });
@@ -142,9 +143,10 @@ class _AddTransactionState extends State<AddTransaction> {
   }
 
   // Helper to extract numeric value from formatted controller text
-  double _extractAmount() {
-    final raw = _amountController.text.replaceAll(RegExp(r'[^\d.]'), '');
-    return double.tryParse(raw) ?? 0;
+  double _extractAmount() => extractAmountFromText(_amountController.text);
+
+  void validateAmt(String value) {
+    formatIndianCurrencyInput(_amountController, value);
   }
 
   //resolve category id for non-expense types from db (Income/Lend/Borrow/Settlement)
@@ -165,7 +167,7 @@ class _AddTransactionState extends State<AddTransaction> {
   //else save transaction and update bank balance
   Future<void> _save() async {
     final textTheme = Theme.of(context).textTheme;
-    List<Bank> banks;
+    List<BankModel> banks;
 
     //basic client-side validation
     _amount = _extractAmount();
@@ -302,32 +304,30 @@ class _AddTransactionState extends State<AddTransaction> {
 
             // Segmented type selector
             Center(
-              child: Container(
-                child: ToggleButtons(
-                  isSelected: List.generate(
-                    _types.length,
-                    (i) => i == _typeIndex,
-                  ),
-                  onPressed: (i) => setState(() => _typeIndex = i),
-                  borderRadius: BorderRadius.circular(16),
-                  fillColor: kPrimaryColor,
-                  selectedBorderColor: kPrimaryColor,
-                  constraints: const BoxConstraints(
-                    minHeight: 36,
-                    minWidth: 90,
-                  ),
-                  children:
-                      _types
-                          .map(
-                            (t) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0,
-                              ),
-                              child: Text(t, style: textTheme.bodyLarge),
-                            ),
-                          )
-                          .toList(),
+              child: ToggleButtons(
+                isSelected: List.generate(
+                  _types.length,
+                  (i) => i == _typeIndex,
                 ),
+                onPressed: (i) => setState(() => _typeIndex = i),
+                borderRadius: BorderRadius.circular(16),
+                fillColor: kPrimaryColor,
+                selectedBorderColor: kPrimaryColor,
+                constraints: const BoxConstraints(
+                  minHeight: 36,
+                  minWidth: 90,
+                ),
+                children:
+                    _types
+                        .map(
+                          (t) => Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
+                            child: Text(t, style: textTheme.bodyLarge),
+                          ),
+                        )
+                        .toList(),
               ),
             ),
             khBox,
@@ -338,12 +338,12 @@ class _AddTransactionState extends State<AddTransaction> {
                 icon: categoryIcon,
                 title: 'Category',
                 trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<Category>(
+                  child: DropdownButton<CategoryModel>(
                     value: _selectedCategory,
                     items:
                         _expenseCategories
                             .map(
-                              (cat) => DropdownMenuItem<Category>(
+                              (cat) => DropdownMenuItem<CategoryModel>(
                                 value: cat,
                                 child: Text(cat.name),
                               ),
@@ -446,65 +446,13 @@ class _AddTransactionState extends State<AddTransaction> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            khBox,
           ],
         ),
       ),
     );
   }
 
-  //valiadate the transaction amount input field and format it in indian currency format
-  void validateAmt(String value) {
-    // Remove everything except digits and dot
-    final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
-    if (cleaned.isEmpty) {
-      setState(() {
-        _amountController.value = const TextEditingValue(text: '');
-      });
-      return;
-    }
-
-    // Allow only one dot and max 2 decimals
-    final dotIndex = cleaned.indexOf('.');
-    String finalText;
-    if (dotIndex == -1) {
-      finalText = cleaned;
-    } else {
-      final before = cleaned.substring(0, dotIndex);
-      final afterRaw = cleaned.substring(dotIndex + 1).replaceAll('.', '');
-      final after = afterRaw.length > 2 ? afterRaw.substring(0, 2) : afterRaw;
-      // Preserve trailing dot if user just typed it
-      finalText = afterRaw.isEmpty ? '$before.' : '$before.$after';
-    }
-
-    // Format integer part with Indian grouping, keep user-entered decimals
-    final parts = finalText.split('.');
-    final intPart = parts[0].isEmpty ? '0' : parts[0];
-    final formattedInt = NumberFormat.decimalPattern(
-      'en_IN',
-    ).format(int.tryParse(intPart) ?? 0);
-
-    String formatted = formattedInt;
-    if (finalText.contains('.')) {
-      // Handle trailing dot and decimals
-      if (finalText.endsWith('.')) {
-        formatted = '$formattedInt.';
-      } else {
-        formatted = '$formattedInt.${parts[1]}';
-      }
-    }
-
-    final display = '₹ $formatted';
-
-    if (display != _amountController.text) {
-      setState(() {
-        _amountController.value = TextEditingValue(
-          text: display,
-          selection: TextSelection.collapsed(offset: display.length),
-        );
-      });
-    }
-  }
 
   //if bank not found show this dialog to add bank first
   void addBankDialog(

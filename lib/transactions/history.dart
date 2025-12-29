@@ -20,7 +20,7 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  List<TransactionModel> _transactions = [];
+  final List<TransactionModel> _transactions = [];
   int page = 0;
 
   final ScrollController _scrollController = ScrollController();
@@ -512,10 +512,10 @@ class _FilterSheetState extends State<FilterSheet> {
   String _selBank = kAll;
 
   int? _bankId;
-  List<Bank> _banks = [];
+  List<BankModel> _banks = [];
 
   //list of categories loaded from db for category filter dropdown
-  List<Category> _categories = [];
+  List<CategoryModel> _categories = [];
 
   final _types = const ['Income', 'Expense', 'Lend', 'Borrow'];
 
@@ -675,7 +675,7 @@ class _FilterSheetState extends State<FilterSheet> {
 
             // Category dropdown
             DropdownButtonFormField<String>(
-              value: _selCategory,
+              initialValue: _selCategory,
               isExpanded: true,
               style: textTheme.bodyLarge,
               decoration: kBaseInputDecoration.copyWith(labelText: 'Category'),
@@ -738,7 +738,7 @@ class _FilterSheetState extends State<FilterSheet> {
 
             // Bank dropdown
             DropdownButtonFormField<String>(
-              value: _selBank,
+              initialValue: _selBank,
               isExpanded: true,
               style: textTheme.bodyLarge,
               decoration: kBaseInputDecoration.copyWith(labelText: 'Bank'),

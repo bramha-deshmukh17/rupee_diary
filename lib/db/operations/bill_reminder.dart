@@ -15,10 +15,7 @@ class BillReminderDao {
       title text not null,
       amount real not null,
       dueDate text not null,
-
-      category text,
       categoryId integer,
-
       notes text,
       isRecurring integer not null default 0,
       isPaid integer not null default 0,
@@ -90,7 +87,7 @@ class BillReminderDao {
     debugPrint('===== bill reminders (models) =====');
     for (final r in list) {
       debugPrint(
-        'id:${r.id} title:${r.title} amount:${r.amount} due:${r.dueDate.toIso8601String()} category:${r.category} recurring:${r.isRecurring} paid:${r.isPaid}',
+        'id:${r.id} title:${r.title} amount:${r.amount} due:${r.dueDate.toIso8601String()} recurring:${r.isRecurring} paid:${r.isPaid}',
       );
     }
     debugPrint('===== end =====');

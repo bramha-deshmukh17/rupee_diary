@@ -48,9 +48,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
       if (!mounted) return;
       setState(() {
-        totalBalance = usage['total_balance'];
-        totalIncome = usage['total_income'];
-        totalExpense = usage['total_expense'];
+        totalBalance = usage['totalBalance'];
+        totalIncome = usage['totalIncome'];
+        totalExpense = usage['totalExpense'];
         latestTransaction = transactions.isNotEmpty ? transactions : null;
       });
     } catch (e) {

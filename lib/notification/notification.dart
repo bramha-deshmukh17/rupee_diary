@@ -22,7 +22,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   bool _isLoading = true;
 
   //list of categories from db for mapping name -> icon
-  List<Category> _categories = [];
+  List<CategoryModel> _categories = [];
 
   @override
   void initState() {
@@ -171,23 +171,22 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 itemBuilder: (context, i) {
                   final r = _items[i];
 
-                  //find matching category from db using reminder.category, fallback to generic icon
-                  final Category? cat = _categories.firstWhere(
-                    (c) => c.name == r.category,
+                  // find matching category from db using reminder.categoryId, fallback to generic icon
+                  final CategoryModel cat = _categories.firstWhere(
+                    (c) => c.id == r.categoryId,
                     orElse:
                         () =>
                             _categories.isNotEmpty
                                 ? _categories.first
-                                : Category(
+                                : CategoryModel(
                                   id: -1,
                                   name: '',
                                   icon: FontAwesomeIcons.shapes,
                                 ),
                   );
+
                   final iconData =
-                      (cat != null && cat.id != -1)
-                          ? cat.icon
-                          : FontAwesomeIcons.shapes;
+                      cat.id != -1 ? cat.icon : FontAwesomeIcons.shapes;
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -195,7 +194,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       title: Row(
                         children: [
                           Icon(
-                            iconData, //category icon taken from db
+                            iconData, // category icon taken from db
                             size: 20,
                             color: kPrimaryColor,
                           ),

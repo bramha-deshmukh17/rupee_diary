@@ -2,15 +2,59 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 
+import '../db/database_helper.dart';
+import '../db/model/budget.dart';
 import '../db/model/category.dart';
+import '../utility/amount_input.dart';
 import '../utility/constant.dart';
 import '../utility/appbar.dart';
 import '../utility/bottombar.dart';
+import '../utility/snack.dart';
 
-class BudgetScreen extends StatelessWidget {
+class BudgetScreen extends StatefulWidget {
+  static const String id = "/budget";
   const BudgetScreen({super.key});
 
-  static const String id = "/budget";
+  @override
+  State<BudgetScreen> createState() => _BudgetScreenState();
+}
+
+class _BudgetScreenState extends State<BudgetScreen> {
+  List<Map<String, dynamic>> budgets = [];
+  Map<String, double?> totalExpense = {};
+  List<Map<int, double?>> expenses = [];
+  @override
+  void initState() {
+    super.initState();
+    loadBudgets();
+    loadExpenses();
+  }
+
+  void loadBudgets() async {
+    // Load budgets from the database
+    budgets = await DatabaseHelper.instance.budgetDao.getAllBudgets();
+
+    // Calculate the monthly budget total
+    double total = 0;
+    for (var budget in budgets) {
+      total += budget['amount'] as double;
+    }
+    budgets.add({'total': total});
+
+    setState(() {});
+  }
+
+  void loadExpenses() async {
+    final usage = await DatabaseHelper.instance.transactionsDao.getUsage();
+    totalExpense = {
+      'totalExpense': (usage['totalExpense'] as num?)?.toDouble() ?? 0.0,
+    };
+
+    // Directly use the DAO result: List<Map<int, double?>>
+    expenses =
+        await DatabaseHelper.instance.transactionsDao.getCategoryExpense();
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,22 +63,41 @@ class BudgetScreen extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Monthly card takes its natural height
-            const MonthlyBudgetSection(),
-            khBox,
+            MonthlyBudgetSection(
+              budget:
+                  budgets.where((b) => b.containsKey('total')).isNotEmpty
+                      ? budgets.firstWhere(
+                            (b) => b.containsKey('total'),
+                          )['total']
+                          as double
+                      : 0.0,
+              totalExpense: totalExpense['totalExpense'] ?? 0.0,
+            ),
+            khBox, khBox,
             // Category list takes the remaining height
-            Expanded(child: const CategoryBudgetSection()),
+            Expanded(
+              child: CategoryBudgetSection(
+                expenses: expenses,
+                budgets: budgets,
+                onReload: () {
+                  loadBudgets();
+                  loadExpenses();
+                },
+              ),
+            ),
           ],
         ),
       ),
       bottomNavigationBar: const BottomBar(currentIndex: 2),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // showDialog(
-          //   context: context,
-          //   builder: (context) => AddBudget(onSave: loadBudgets),
-          // );
+          showDialog(
+            context: context,
+            builder: (context) => AddBudgetDialog(onSave: loadBudgets),
+          );
         },
         backgroundColor: kPrimaryColor,
         foregroundColor: kWhite,
@@ -46,41 +109,146 @@ class BudgetScreen extends StatelessWidget {
   }
 }
 
-class AddBudget extends StatefulWidget {
+class AddBudgetDialog extends StatefulWidget {
   final VoidCallback onSave;
-  const AddBudget({super.key, required this.onSave});
+  const AddBudgetDialog({super.key, required this.onSave});
 
   @override
-  State<AddBudget> createState() => _AddBudgetState();
+  State<AddBudgetDialog> createState() => _AddBudgetDialogState();
 }
 
-class _AddBudgetState extends State<AddBudget> {
-  late List<Category> categoriesData;
+class _AddBudgetDialogState extends State<AddBudgetDialog> {
+  List<CategoryModel> categoriesData = [];
+  CategoryModel? selectedCategory;
+  final TextEditingController _textEditingController = TextEditingController();
 
   @override
   void initState() {
-    loadCategories();
     super.initState();
+    loadCategories();
   }
 
-  void loadCategories() async {}
+  void loadCategories() async {
+    categoriesData =
+        await DatabaseHelper.instance.categoryDao.getExpenseCategories();
+    if (categoriesData.isNotEmpty) {
+      selectedCategory = categoriesData[0];
+    }
+    setState(() {});
+  }
+
+  double _extractAmount() => extractAmountFromText(_textEditingController.text);
+
+  void validateAmt(String value) {
+    formatIndianCurrencyInput(_textEditingController, value);
+  }
+
+  void add() async {
+    try {
+      await DatabaseHelper.instance.budgetDao.insertBudget(
+        BudgetModel(categoryId: selectedCategory!.id, amount: _extractAmount()),
+      );
+      showSnack("Budget added sucessfully!", context);
+      widget.onSave();
+      Navigator.pop(context);
+    } catch (e) {
+      showSnack("Unable to add budget!", context, error: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Column(
-        children: [
-          TextField(),
-          //DropdownButtonFormField(items: categoriesData.map((element)=>DropdownMenuItem(value: element.data,child: child)), onChanged: onChanged),
-        ],
+    final textTheme = Theme.of(context).textTheme;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      content: Padding(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<CategoryModel>(
+                value: selectedCategory,
+                items:
+                    categoriesData
+                        .map(
+                          (element) => DropdownMenuItem<CategoryModel>(
+                            value: element,
+                            child: Text(element.name),
+                          ),
+                        )
+                        .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedCategory = value;
+                  });
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
+              khBox,
+
+              TextField(
+                controller: _textEditingController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: false,
+                ),
+                textAlign: TextAlign.center,
+                style: textTheme.displayLarge,
+                cursorColor: kSecondaryColor,
+                decoration: const InputDecoration(
+                  hintText: '₹ 0.00',
+                  border: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onChanged: (value) => validateAmt(value),
+              ),
+
+              khBox,
+
+              SizedBox(
+                height: 48,
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: add,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 1,
+                  ),
+                  child: Text(
+                    'Add Budget',
+                    style: textTheme.bodyLarge?.copyWith(color: kWhite),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
 class MonthlyBudgetSection extends StatelessWidget {
-  const MonthlyBudgetSection({super.key});
-
+  final double budget;
+  final double totalExpense;
+  const MonthlyBudgetSection({
+    super.key,
+    required this.budget,
+    required this.totalExpense,
+  });
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -116,15 +284,22 @@ class MonthlyBudgetSection extends StatelessWidget {
           ),
           khBox,
           Text(
-            "₹1000",
+            "₹${totalExpense.toStringAsFixed(2)}",
             style: textTheme.displayLarge?.copyWith(
               fontSize: 50.0,
               fontWeight: FontWeight.bold,
-              color: kWhite,
+              shadows: [
+                Shadow(
+                  color: kBlack.withOpacity(0.3),
+                  offset: const Offset(0, 4),
+                  blurRadius: 4,
+                ),
+              ],
+              color: totalExpense > budget ? kRed : kWhite,
             ),
           ),
           Text(
-            "of ₹2000 spent",
+            "of ₹${budget.toStringAsFixed(2)} spent",
             style: textTheme.bodyLarge?.copyWith(color: kWhite),
           ),
           khBox,
@@ -144,7 +319,16 @@ class MonthlyBudgetSection extends StatelessWidget {
 }
 
 class CategoryBudgetSection extends StatelessWidget {
-  const CategoryBudgetSection({super.key});
+  final List<Map<int, double?>> expenses;
+  final List<Map<String, dynamic>> budgets;
+  final VoidCallback onReload;
+
+  const CategoryBudgetSection({
+    super.key,
+    required this.expenses,
+    required this.budgets,
+    required this.onReload,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -155,31 +339,53 @@ class CategoryBudgetSection extends StatelessWidget {
       children: [
         Text("Category Budgets", style: textTheme.headlineMedium),
         khBox,
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: const [
-              CategoryBudgetCard(
-                icon: FontAwesomeIcons.bagShopping,
-                title: "Shopping",
-                spent: 380,
-                total: 500,
-              ),
-              CategoryBudgetCard(
-                icon: FontAwesomeIcons.cartShopping,
-                title: "Groceries",
-                spent: 415,
-                total: 400,
-              ),
-              CategoryBudgetCard(
-                icon: FontAwesomeIcons.tv,
-                title: "Entertainment",
-                spent: 110,
-                total: 200,
-              ),
-            ],
+        if (budgets.isEmpty || budgets.length == 1)
+          Text(
+            "No budgets set. Tap + to add a budget.",
+            style: textTheme.bodyMedium,
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              itemCount: budgets.length - 1,
+              itemBuilder: (context, index) {
+                final budget = budgets[index];
+                final categoryId = budget['categoryId'] as int;
+                final spent =
+                    expenses.firstWhere(
+                      (e) => e.containsKey(categoryId),
+                      orElse: () => {categoryId: 0.0},
+                    )[categoryId] ??
+                    0.0;
+
+                return GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder:
+                          (ctx) => EditBudget(
+                            budgetId: budget['id'] as int,
+                            categoryName: budget['category'] as String,
+                            onSave:
+                                onReload, // will call loadBudgets + loadExpenses
+                          ),
+                    );
+                  },
+                  child: CategoryBudgetCard(
+                    id: budget['id'] as int,
+                    icon: IconData(
+                      budget['icon_code_point'] as int,
+                      fontFamily: budget['icon_font_family'] as String,
+                      fontPackage: budget['icon_font_package'] as String?,
+                    ),
+                    title: budget['category'] as String,
+                    spent: spent,
+                    total: budget['amount'] as double,
+                  ),
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
@@ -190,9 +396,11 @@ class CategoryBudgetCard extends StatelessWidget {
   final String title;
   final double spent;
   final double total;
+  final int id;
 
   const CategoryBudgetCard({
     super.key,
+    required this.id,
     required this.icon,
     required this.title,
     required this.spent,
@@ -279,6 +487,100 @@ class CategoryBudgetCard extends StatelessWidget {
               backgroundColor: Colors.grey.shade300,
               valueColor: AlwaysStoppedAnimation<Color>(
                 isOver ? kRed : kSecondaryColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class EditBudget extends StatelessWidget {
+  final int budgetId;
+  final String categoryName;
+  final VoidCallback onSave;
+  final TextEditingController amountController = TextEditingController();
+
+  EditBudget({
+    super.key,
+    required this.budgetId,
+    required this.categoryName,
+    required this.onSave,
+  });
+
+  double _extractAmount() => extractAmountFromText(amountController.text);
+
+  void validateAmt(String value) {
+    formatIndianCurrencyInput(amountController, value);
+  }
+
+  Future<bool> update() async {
+    final amount = _extractAmount();
+    try {
+      await DatabaseHelper.instance.budgetDao.updateBudget(budgetId, amount);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(categoryName, style: textTheme.bodyLarge),
+          khBox,
+          TextField(
+            controller: amountController,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+              signed: false,
+            ),
+            textAlign: TextAlign.center,
+            style: textTheme.displayLarge,
+            cursorColor: kSecondaryColor,
+            decoration: const InputDecoration(
+              hintText: '₹ 0.00',
+              border: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+            onChanged: (value) => validateAmt(value),
+          ),
+          khBox,
+
+          SizedBox(
+            height: 48,
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                final ok = await update();
+                showSnack(
+                  ok ? "Updated sucessfully" : "Failed to update",
+                  context,
+                );
+                if (ok) {
+                  onSave(); // reload budgets in parent
+                  Navigator.of(context).pop(); // close dialog
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 1,
+              ),
+              child: Text(
+                'Update Budget',
+                style: textTheme.bodyLarge?.copyWith(color: kWhite),
               ),
             ),
           ),

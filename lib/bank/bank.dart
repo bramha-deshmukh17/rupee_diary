@@ -16,7 +16,7 @@ class BankScreen extends StatefulWidget {
 }
 
 class _BankScreenState extends State<BankScreen> {
-  List<Bank> _banks = [];
+  List<BankModel> _banks = [];
   bool _loading = true;
 
   @override
@@ -42,7 +42,7 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   //deleting bank
-  void deleteBank(BuildContext context, Bank b) async {
+  void deleteBank(BuildContext context, BankModel b) async {
     try {
       await DatabaseHelper.instance.bankDao.deleteBank(b);
       showSnack('Bank deleted successfully', context);
@@ -82,7 +82,7 @@ class _BankScreenState extends State<BankScreen> {
                     child: ListView.separated(
                       padding: const EdgeInsets.all(12),
                       itemCount: _banks.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, i) {
                         final b = _banks[i];
                         final isDefault = b.isDefault ?? false;
@@ -172,7 +172,7 @@ class _BankScreenState extends State<BankScreen> {
   //taking context and bank data and loadBanks function as parameters 
   GestureLongPressCallback deleteBankDialog(
     BuildContext context,
-    Bank b,
+    BankModel b,
     Future<void> Function() loadBanks,
   ) {
     return () async {
@@ -243,7 +243,7 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   //method to make a bank account default
-  void changeDefaultBank(Bank b, bool isDefault, BuildContext context) async {
+  void changeDefaultBank(BankModel b, bool isDefault, BuildContext context) async {
     if (isDefault) return;
     try {
       await DatabaseHelper.instance.bankDao.setDefault(b.id!);
@@ -259,10 +259,10 @@ class _BankScreenState extends State<BankScreen> {
 class AddBank extends StatefulWidget {
   final VoidCallback onSave;
 
-  const AddBank({Key? key, required this.onSave}) : super(key: key);
+  const AddBank({super.key, required this.onSave});
 
   @override
-  _AddBankState createState() => _AddBankState();
+  State<AddBank> createState() => _AddBankState();
 }
 
 class _AddBankState extends State<AddBank> {
@@ -335,7 +335,7 @@ class _AddBankState extends State<AddBank> {
     }
 
     try {
-      final newBank = Bank(name: name, balance: balance);
+      final newBank = BankModel(name: name, balance: balance);
       await DatabaseHelper.instance.bankDao.insertBank(newBank);
       widget.onSave();
       showSnack("Bank '$name' added", context);

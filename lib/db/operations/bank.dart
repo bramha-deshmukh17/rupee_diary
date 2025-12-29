@@ -18,7 +18,7 @@ class BankDao {
   ''';
 
   //insert into bank table
-  Future<int> insertBank(Bank bank) async {
+  Future<int> insertBank(BankModel bank) async {
     // If no default exists, make this one default automatically, inside a transaction.
     final id = await database.transaction<int>((txn) async {
       final existingDefault = await txn.query(
@@ -36,13 +36,13 @@ class BankDao {
   }
 
   //get all banks
-  Future<List<Bank>> getBanks() async {
+  Future<List<BankModel>> getBanks() async {
     final rows = await database.query('bank', orderBy: 'name ASC');
-    return rows.map((e) => Bank.fromMap(e)).toList();
+    return rows.map((e) => BankModel.fromMap(e)).toList();
   }
 
   //delete bank by id
-  Future<int> deleteBank(Bank bank) {
+  Future<int> deleteBank(BankModel bank) {
     if (bank.id == null) {
       throw ArgumentError('Bank id required for update');
     }
