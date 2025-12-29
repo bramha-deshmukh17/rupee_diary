@@ -7,15 +7,15 @@ import './constant.dart';
 class Appbar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool isBackButton;
-  final bool isHomePage;
+  final bool appbarIcons;
   final int badgeCount;
 
   const Appbar({
     required this.title,
     this.isBackButton = false,
-    this.isHomePage = false,
+    this.appbarIcons = false,
     this.badgeCount = 0,
-    super.key
+    super.key,
   });
 
   @override
@@ -25,77 +25,85 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       elevation: 0,
       automaticallyImplyLeading: false,
+
       leading:
           isBackButton
               ? IconButton(
-                  icon: kBackArrow,
-                  onPressed: () => Navigator.pop(context),
-                )
-              : Icon(null),
+                icon: kBackArrow,
+                onPressed: () => Navigator.pop(context),
+              )
+              : const SizedBox(width: 48),
 
-      title: Text(title, style: textTheme.headlineMedium),
-      centerTitle: !isHomePage,
+      title: Text(
+        title,
+        style: textTheme.headlineMedium,
+        textAlign: TextAlign.center,
+      ),
 
-      actions:
-          isHomePage
-              ? [
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Stack(
-                    clipBehavior: Clip.none,
+      centerTitle: true,
+
+      actions: [
+        SizedBox(
+          width: 96,
+          child:
+              appbarIcons
+                  ? Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      IconButton(
-                        icon: const Icon(
-                          FontAwesomeIcons.solidBell,
-                          size: 20.0,
-                        ),
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            NotificationCenterScreen.id,
-                          );
-                        },
-                      ),
-                      if (badgeCount > 0)
-                        Positioned(
-                          right: 6,
-                          top: 6,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              FontAwesomeIcons.solidBell,
+                              size: 20.0,
                             ),
-                            decoration: const BoxDecoration(
-                              color: kRed,
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(10),
+                            onPressed: () {
+                              Navigator.pushNamed(
+                                context,
+                                NotificationCenterScreen.id,
+                              );
+                            },
+                          ),
+                          if (badgeCount > 0)
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: kRed,
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(10),
+                                  ),
+                                ),
+                                child: Text(
+                                  badgeCount > 5 ? '5+' : '$badgeCount',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: kWhite,
+                                  ),
+                                ),
                               ),
                             ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: Text(
-                              badgeCount > 5 ? '5+' : '$badgeCount',
-                              style: textTheme.bodySmall?.copyWith(color: kWhite),
-                            ),
-                          ),
-                        ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(FontAwesomeIcons.gear, size: 20.0),
+                        onPressed: () {
+                          Navigator.pushNamed(context, SettingsScreen.id);
+                        },
+                      ),
                     ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(FontAwesomeIcons.gear, size: 20.0),
-                  onPressed: () {
-                    Navigator.pushNamed(context, SettingsScreen.id);
-                  },
-                ),
-                kwBox,
-              ]
-              : [],
+                  )
+                  : null,
+        ),
+      ],
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(60.0);
+  Size get preferredSize => const Size.fromHeight(60);
 }

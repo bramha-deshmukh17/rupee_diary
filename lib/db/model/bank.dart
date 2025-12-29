@@ -1,13 +1,13 @@
-class Bank {
+class BankModel {
   final int? id;
   final String? name;
   final double? balance;
   final bool? isDefault;
 
-  const Bank({this.id, this.name, this.balance, this.isDefault});
+  const BankModel({this.id, this.name, this.balance, this.isDefault});
 
-  Bank copyWith({int? id, String? name, double? balance, bool? isDefault}) =>
-      Bank(
+  BankModel copyWith({int? id, String? name, double? balance, bool? isDefault}) =>
+      BankModel(
         id: id ?? this.id,
         name: name ?? this.name,
         balance: balance ?? this.balance,
@@ -21,7 +21,7 @@ class Bank {
     'isDefault': (isDefault ?? false) ? 1 : 0,
   };
 
-  factory Bank.fromMap(Map<String, dynamic> m) => Bank(
+  factory BankModel.fromMap(Map<String, dynamic> m) => BankModel(
     id: m['id'] as int?,
     name: m['name'] as String?,
     balance: (m['balance'] as num?)?.toDouble(),

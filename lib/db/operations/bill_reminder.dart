@@ -6,18 +6,22 @@ class BillReminderDao {
   final Database database;
   BillReminderDao(this.database);
 
+  static const table = 'bill_reminders';
+
   // SQL to create the bill_reminders table
   static const createTable = '''
-    create table bill_reminders(
+    create table if not exists bill_reminders (
       id integer primary key autoincrement,
       title text not null,
       amount real not null,
-      dueDate text not null,          -- store as ISO8601 string
-      category text not null,
+      dueDate text not null,
+      categoryId integer,
       notes text,
-      isRecurring integer default 0,
-      isPaid integer default 0
-    );
+      isRecurring integer not null default 0,
+      isPaid integer not null default 0,
+
+      foreign key (categoryId) references categories(id) on delete set null
+    )
   ''';
 
   // Helper: ensure dueDate is a string (ISO8601) if a DateTime was provided.
@@ -31,25 +35,21 @@ class BillReminderDao {
 
   // add bill reminder
   Future<int> insertBillReminder(Map<String, dynamic> reminder) async {
-    final db = await database;
     final normalized = _normalizeMap(reminder);
-    return await db.insert('bill_reminders', normalized);
+    return await database.insert(table, normalized);
   }
 
   // get all bill reminders
   Future<List<BillReminderModel>> getAll() async {
-    final db = await database;
-    final rows = await db.query('bill_reminders', orderBy: 'dueDate ASC');
-
+    final rows = await database.query(table, orderBy: 'datetime(dueDate) asc');
     return rows.map(BillReminderModel.fromMap).toList();
   }
 
   // update a bill reminder
   Future<int> updateBillReminder(int id, Map<String, dynamic> reminder) async {
-    final db = await database;
     final normalized = _normalizeMap(reminder);
-    return await db.update(
-      'bill_reminders',
+    return await database.update(
+      table,
       normalized,
       where: 'id = ?',
       whereArgs: [id],
@@ -58,15 +58,13 @@ class BillReminderDao {
 
   // delete a bill reminder
   Future<int> deleteBillReminder(int id) async {
-    final db = await database;
-    return await db.delete('bill_reminders', where: 'id = ?', whereArgs: [id]);
+    return await database.delete(table, where: 'id = ?', whereArgs: [id]);
   }
 
   // mark as paid
   Future<int> markBillAsPaid(int id, bool isPaid) async {
-    final db = await database;
-    return await db.update(
-      'bill_reminders',
+    return await database.update(
+      table,
       {'isPaid': isPaid ? 1 : 0},
       where: 'id = ?',
       whereArgs: [id],
@@ -75,9 +73,8 @@ class BillReminderDao {
 
   // store nextDue as ISO8601 string
   Future<int> advanceRecurringReminder(int id, DateTime nextDue) async {
-    final db = await database;
-    return await db.update(
-      'bill_reminders',
+    return await database.update(
+      table,
       {'dueDate': nextDue.toIso8601String(), 'isPaid': 0},
       where: 'id = ?',
       whereArgs: [id],
@@ -87,16 +84,12 @@ class BillReminderDao {
   // Debug parsed models (relies on BillReminderModel.fromMap)
   Future<void> debugPrintAllModels() async {
     final list = await getAll();
-    debugPrint('📌 ===== BILL REMINDERS (MODELS) =====');
-    if (list.isEmpty) {
-      debugPrint('⚠️ No reminders found');
-    } else {
-      for (final r in list) {
-        debugPrint(
-          '🧾 ID: ${r.id} | TITLE: ${r.title} | ₹${r.amount} | DUE: ${r.dueDate.toIso8601String()} | RECURRING: ${r.isRecurring} | PAID: ${r.isPaid}',
-        );
-      }
+    debugPrint('===== bill reminders (models) =====');
+    for (final r in list) {
+      debugPrint(
+        'id:${r.id} title:${r.title} amount:${r.amount} due:${r.dueDate.toIso8601String()} recurring:${r.isRecurring} paid:${r.isPaid}',
+      );
     }
-    debugPrint('📌 ===== END =====');
+    debugPrint('===== end =====');
   }
 }

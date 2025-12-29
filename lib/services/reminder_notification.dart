@@ -19,8 +19,8 @@ class ReminderNotificationService {
   static bool _initialized = false;
   static const MethodChannel _tzChannel = MethodChannel('app/timezone');
 
-  static int kReminderHour = 9; // 9 AM
-  static int kReminderMinute = 0; // 0 Minutes
+  static int kReminderHour = 09; // 9 AM
+  static int kReminderMinute = 00; // 0 Minutes
 
   /// Initialize timezone, notification plugin, permissions, and migrate reminders.
   /// If [context] is provided, permission-related snackbars will be shown.
@@ -136,7 +136,7 @@ class ReminderNotificationService {
               title: '',
               amount: 0,
               dueDate: DateTime.now(),
-              category: "General",
+              categoryId: null,
             ),
       );
 
@@ -217,7 +217,7 @@ class ReminderNotificationService {
         // Due day notification (recurring monthly)
         await _schedule(
           id: reminder.id! * 10 + 1,
-          title: '⚠️ Bill Due Today',
+          title: 'Bill Due Today',
           body:
               '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
           scheduled: dueAt,
@@ -229,7 +229,7 @@ class ReminderNotificationService {
         if (dueDate.day > 1) {
           await _schedule(
             id: reminder.id! * 10,
-            title: '📋 Bill Due Tomorrow',
+            title: 'Bill Due Tomorrow',
             body:
                 '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
             scheduled: beforeAt,
@@ -433,8 +433,9 @@ class ReminderNotificationService {
       }
 
       if (reminder.id == null) {
-        if (context != null)
+        if (context != null) {
           showSnack('Invalid reminder', context, error: true);
+        }
         return;
       }
 

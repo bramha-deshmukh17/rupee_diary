@@ -53,7 +53,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Apply the saved theme setting (best-effort)
       try {
-        context.read<ThemeProvider>().toggleTheme(_settings['theme'] == 'enabled');
+        context.read<ThemeProvider>().toggleTheme(
+          _settings['theme'] == 'enabled',
+        );
       } catch (e) {
         if (mounted) {
           showSnack('Failed to apply theme', context, error: true);
@@ -80,14 +82,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       await DatabaseHelper.instance.settingDao.updateSetting(
-        Setting(settingsKey: key, settingsValue: newValue),
+        SettingModel(settingsKey: key, settingsValue: newValue),
       );
 
       if (!mounted) return;
       final msg = switch (key) {
-        'notifications' => 'Notifications ${isEnabled ? 'enabled' : 'disabled'}',
+        'notifications' =>
+          'Notifications ${isEnabled ? 'enabled' : 'disabled'}',
         'theme' => 'Dark mode ${isEnabled ? 'enabled' : 'disabled'}',
-        _ => 'Setting updated'
+        _ => 'Setting updated',
       };
       showSnack(msg, context);
     } catch (e) {
@@ -116,7 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
 
     return Scaffold(
-      appBar: Appbar(title: "Settings", isBackButton: true,),
+      appBar: Appbar(title: "Settings", isBackButton: true),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -130,7 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (val) {
                 _handleToggle('notifications', val);
               },
-              activeColor: kSecondaryColor,
+              activeThumbColor: kSecondaryColor,
             ),
           ),
 
@@ -138,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: FontAwesomeIcons.fileInvoice,
             iconColor: kPrimaryColor,
             title: "Bill Reminders",
-            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0,),
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
             onTap: () {
               Navigator.pushNamed(context, BillReminder.id);
             },
@@ -153,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: Switch(
               value: isDarkMode,
               onChanged: (val) => {_handleToggle('theme', val)},
-              activeColor: kSecondaryColor,
+              activeThumbColor: kSecondaryColor,
             ),
           ),
 
@@ -186,12 +189,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
 
-          khBox,khBox,
+          khBox, khBox,
           Center(
             child: Text(
-              "Version 1.3.5",
+              "Version 1.4.0",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final file = await DatabaseHelper.instance.exportBackupJson();
+              showSnack('backup saved at ${file.path}', context);
+              debugPrint(file.path);
+            },
+            child: const Text('export backup'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await DatabaseHelper.instance
+                    .restoreBackupFromDefaultLocation();
+                if (!context.mounted) return;
+                showSnack('backup restored successfully', context);
+              } catch (e) {
+                if (!context.mounted) return;
+                debugPrint(e.toString());
+                showSnack('restore failed: $e', context, error: true);
+              }
+            },
+            child: const Text('restore backup'),
           ),
         ],
       ),

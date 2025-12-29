@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../bank/bank.dart';
 import '../db/database_helper.dart';
 import '../db/model/bank.dart';
+import '../db/model/category.dart';
+import '../utility/amount_input.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
 import '../utility/snack.dart';
@@ -21,19 +23,29 @@ class _AddTransactionState extends State<AddTransaction> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
   double _amount = 0.0;
+
   final List<String> _types = const ['Expense', 'Income', 'Lend', 'Borrow'];
   int _typeIndex = 0;
 
-  late String _selectedCategory = categoryIcons.keys.first;
+  //list of all categories loaded from db
+  List<CategoryModel> _categories = [];
+
+  //list of only expense categories for dropdown
+  List<CategoryModel> _expenseCategories = [];
+
+  //currently selected expense category
+  CategoryModel? _selectedCategory;
+
   DateTime _selectedDate = DateTime.now();
 
-  List<Bank> _banks = [];
+  List<BankModel> _banks = [];
   int? _selectedBankId;
 
   @override
   void initState() {
     super.initState();
     _loadBanks();
+    _loadCategories(); //load categories and icons from db on screen init
   }
 
   @override
@@ -41,6 +53,64 @@ class _AddTransactionState extends State<AddTransaction> {
     _amountController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  //load category names and icons from db
+  Future<void> _loadCategories() async {
+    try {
+      final categories =
+          await DatabaseHelper.instance.categoryDao.getAllCategories();
+
+      if (!mounted) return;
+
+      setState(() {
+        _categories = categories;
+
+        //filter only expense categories (exclude special types)
+        _expenseCategories =
+            categories.where((c) {
+              final n = c.name.toLowerCase();
+              return n != 'income' &&
+                  n != 'lend' &&
+                  n != 'borrow' &&
+                  n != 'settlement';
+            }).toList();
+
+        //set default selected category for expense
+        if (_selectedCategory == null && _expenseCategories.isNotEmpty) {
+          _selectedCategory = _expenseCategories.first;
+        }
+      });
+    } catch (_) {
+      showSnack("Failed to load categories. Try again later...!", context, error: true);
+    }
+  }
+
+  //load banks data from the db and also default selected bank
+  Future<void> _loadBanks() async {
+    try {
+      final data = await DatabaseHelper.instance.bankDao.getBanks();
+      if (!mounted) return;
+      setState(() {
+        _banks = data;
+        //prefer default bank, else first, else create a dummy bank to avoid null id crash
+        final def = _banks.firstWhere(
+          (b) => (b.isDefault ?? false),
+          orElse:
+              () =>
+                  _banks.isNotEmpty
+                      ? _banks.first
+                      : BankModel(id: null, name: '', balance: 0),
+        );
+        _selectedBankId = def.id;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _banks = [];
+        _selectedBankId = null;
+      });
+    }
   }
 
   //date picker for the transaction date
@@ -72,37 +142,24 @@ class _AddTransactionState extends State<AddTransaction> {
     });
   }
 
-  //load banks data from the db and also default selected bank
-  Future<void> _loadBanks() async {
-    try {
-      final data = await DatabaseHelper.instance.bankDao.getBanks();
-      if (!mounted) return;
-      setState(() {
-        _banks = data;
-        // Prefer default bank, else first else creeate a non null dummy bank to avoid app crash due to null id
-        final def = _banks.firstWhere(
-          (b) => (b.isDefault ?? false),
-          orElse:
-              () =>
-                  _banks.isNotEmpty
-                      ? _banks.first
-                      : Bank(id: null, name: '', balance: 0),
-        );
-        _selectedBankId = def.id;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _banks = [];
-        _selectedBankId = null;
-      });
-    }
+  // Helper to extract numeric value from formatted controller text
+  double _extractAmount() => extractAmountFromText(_amountController.text);
+
+  void validateAmt(String value) {
+    formatIndianCurrencyInput(_amountController, value);
   }
 
-  // Helper to extract numeric value from formatted controller text
-  double _extractAmount() {
-    final raw = _amountController.text.replaceAll(RegExp(r'[^\d.]'), '');
-    return double.tryParse(raw) ?? 0;
+  //resolve category id for non-expense types from db (Income/Lend/Borrow/Settlement)
+  int? _categoryIdByTypeName(String typeName) {
+    final lower = typeName.toLowerCase();
+    try {
+      final c = _categories.firstWhere(
+        (cat) => cat.name.toLowerCase() == lower,
+      );
+      return c.id;
+    } catch (_) {
+      return null;
+    }
   }
 
   //save data to the db of the transaction
@@ -110,8 +167,9 @@ class _AddTransactionState extends State<AddTransaction> {
   //else save transaction and update bank balance
   Future<void> _save() async {
     final textTheme = Theme.of(context).textTheme;
-    List<Bank> banks;
-    // Basic client-side validation
+    List<BankModel> banks;
+
+    //basic client-side validation
     _amount = _extractAmount();
     if (_amount <= 0.0) {
       showSnack('Enter a valid amount', context, error: true);
@@ -134,33 +192,45 @@ class _AddTransactionState extends State<AddTransaction> {
       //bank's balance after transaction
       double balance =
           banks.firstWhere((b) => b.id == _selectedBankId!).balance!;
-      switch (_types[_typeIndex].toLowerCase()) {
+      final typeLower = _types[_typeIndex].toLowerCase();
+
+      switch (typeLower) {
         case 'income':
-          balance += _amount; // add funds
+        case 'borrow':
+          balance += _amount; //add funds
           break;
         case 'expense':
-          balance -= _amount; // subtract funds
-          break;
-        case 'borrow':
-          balance += _amount; // add funds
-          break;
         case 'lend':
-          balance -= _amount; // subtract funds
+          balance -= _amount; //subtract funds
           break;
-        default:
-          balance = balance;
+      }
+
+      int? categoryId;
+
+      if (typeLower == 'expense') {
+        //for expense use selected category from db
+        categoryId = _selectedCategory?.id;
+      } else {
+        //for income/lend/borrow use special category rows in db
+        categoryId = _categoryIdByTypeName(_types[_typeIndex]);
+      }
+
+      if (categoryId == null) {
+        showSnack(
+          'Category not found in database. Please check categories setup.',
+          context,
+          error: true,
+        );
+        return;
       }
 
       final data = <String, dynamic>{
         'bankId': _selectedBankId,
         'amount': _amount,
         'balance': balance,
-        'type': _types[_typeIndex].toLowerCase(),
+        'type': typeLower,
         'date': _selectedDate.toIso8601String(),
-        'category':
-            (_types[_typeIndex].toLowerCase() != 'expense')
-                ? _types[_typeIndex]
-                : _selectedCategory,
+        'categoryId': categoryId,
         'notes':
             _notesController.text.trim().isEmpty
                 ? null
@@ -180,6 +250,10 @@ class _AddTransactionState extends State<AddTransaction> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+
+    //pick icon for currently selected category from db, fallback to generic icon
+    final IconData categoryIcon =
+        _selectedCategory?.icon ?? FontAwesomeIcons.shapes;
 
     return Scaffold(
       appBar: Appbar(title: 'Add Transaction', isBackButton: true),
@@ -217,9 +291,9 @@ class _AddTransactionState extends State<AddTransaction> {
                       contentPadding: EdgeInsets.zero,
                     ),
                     onChanged: (value) {
-                      // sanitize & format
+                      //sanitize & format
                       validateAmt(value);
-                      // store numeric amount
+                      //store numeric amount
                       _amount = _extractAmount();
                     },
                   ),
@@ -230,56 +304,53 @@ class _AddTransactionState extends State<AddTransaction> {
 
             // Segmented type selector
             Center(
-              child: Container(
-                child: ToggleButtons(
-                  isSelected: List.generate(
-                    _types.length,
-                    (i) => i == _typeIndex,
-                  ),
-                  onPressed: (i) => setState(() => _typeIndex = i),
-                  borderRadius: BorderRadius.circular(16),
-                  fillColor: kPrimaryColor,
-                  selectedBorderColor: kPrimaryColor,
-                  constraints: const BoxConstraints(
-                    minHeight: 36,
-                    minWidth: 90,
-                  ),
-                  children:
-                      _types
-                          .map(
-                            (t) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0,
-                              ),
-                              child: Text(t, style: textTheme.bodyLarge),
-                            ),
-                          )
-                          .toList(),
+              child: ToggleButtons(
+                isSelected: List.generate(
+                  _types.length,
+                  (i) => i == _typeIndex,
                 ),
+                onPressed: (i) => setState(() => _typeIndex = i),
+                borderRadius: BorderRadius.circular(16),
+                fillColor: kPrimaryColor,
+                selectedBorderColor: kPrimaryColor,
+                constraints: const BoxConstraints(
+                  minHeight: 36,
+                  minWidth: 90,
+                ),
+                children:
+                    _types
+                        .map(
+                          (t) => Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
+                            child: Text(t, style: textTheme.bodyLarge),
+                          ),
+                        )
+                        .toList(),
               ),
             ),
             khBox,
 
-            // Category selector card
+            // Category selector (Expense only)
             if (_typeIndex == 0)
               _TileCard(
-                icon:
-                    categoryIcons[_selectedCategory] ?? FontAwesomeIcons.shapes,
+                icon: categoryIcon,
                 title: 'Category',
                 trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
+                  child: DropdownButton<CategoryModel>(
                     value: _selectedCategory,
                     items:
-                        categoryIcons.keys
+                        _expenseCategories
                             .map(
-                              (c) => DropdownMenuItem<String>(
-                                value: c,
-                                child: Text(c),
+                              (cat) => DropdownMenuItem<CategoryModel>(
+                                value: cat,
+                                child: Text(cat.name),
                               ),
                             )
                             .toList(),
                     onChanged: (v) {
-                      if (v != null) setState(() => _selectedCategory = v);
+                      setState(() => _selectedCategory = v);
                     },
                   ),
                 ),
@@ -353,9 +424,10 @@ class _AddTransactionState extends State<AddTransaction> {
               decoration: kBaseInputDecoration.copyWith(labelText: 'Notes...'),
             ),
 
-            khBox, khBox,
+            khBox,
+            khBox,
 
-            // CTA
+            // Add button
             SizedBox(
               height: 48,
               child: ElevatedButton(
@@ -374,65 +446,13 @@ class _AddTransactionState extends State<AddTransaction> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            khBox,
           ],
         ),
       ),
     );
   }
 
-  //valiadate the transaction amount input field and format it in indian currency format
-  void validateAmt(String value) {
-    // Remove everything except digits and dot
-    final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
-    if (cleaned.isEmpty) {
-      setState(() {
-        _amountController.value = const TextEditingValue(text: '');
-      });
-      return;
-    }
-
-    // Allow only one dot and max 2 decimals
-    final dotIndex = cleaned.indexOf('.');
-    String finalText;
-    if (dotIndex == -1) {
-      finalText = cleaned;
-    } else {
-      final before = cleaned.substring(0, dotIndex);
-      final afterRaw = cleaned.substring(dotIndex + 1).replaceAll('.', '');
-      final after = afterRaw.length > 2 ? afterRaw.substring(0, 2) : afterRaw;
-      // Preserve trailing dot if user just typed it
-      finalText = afterRaw.isEmpty ? '$before.' : '$before.$after';
-    }
-
-    // Format integer part with Indian grouping, keep user-entered decimals
-    final parts = finalText.split('.');
-    final intPart = parts[0].isEmpty ? '0' : parts[0];
-    final formattedInt = NumberFormat.decimalPattern(
-      'en_IN',
-    ).format(int.tryParse(intPart) ?? 0);
-
-    String formatted = formattedInt;
-    if (finalText.contains('.')) {
-      // Handle trailing dot and decimals
-      if (finalText.endsWith('.')) {
-        formatted = '$formattedInt.';
-      } else {
-        formatted = '$formattedInt.${parts[1]}';
-      }
-    }
-
-    final display = '₹ $formatted';
-
-    if (display != _amountController.text) {
-      setState(() {
-        _amountController.value = TextEditingValue(
-          text: display,
-          selection: TextSelection.collapsed(offset: display.length),
-        );
-      });
-    }
-  }
 
   //if bank not found show this dialog to add bank first
   void addBankDialog(
@@ -460,7 +480,6 @@ class _AddTransactionState extends State<AddTransaction> {
                   Navigator.pop(context);
                   Navigator.pushNamed(context, BankScreen.id);
                 },
-
                 child: Text(
                   'Add Bank',
                   style: textTheme.bodyMedium?.copyWith(color: kPrimaryColor),

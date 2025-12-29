@@ -48,9 +48,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
       if (!mounted) return;
       setState(() {
-        totalBalance = usage['total_balance'];
-        totalIncome = usage['total_income'];
-        totalExpense = usage['total_expense'];
+        totalBalance = usage['totalBalance'];
+        totalIncome = usage['totalIncome'];
+        totalExpense = usage['totalExpense'];
         latestTransaction = transactions.isNotEmpty ? transactions : null;
       });
     } catch (e) {
@@ -103,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: Appbar(title: "", isHomePage: true, badgeCount: _badgeCount),
+      appBar: Appbar(title: "Home", appbarIcons: true, badgeCount: _badgeCount),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -179,7 +179,10 @@ class BalanceCard extends StatelessWidget {
             style: textTheme.headlineMedium?.copyWith(color: kWhite),
           ),
           khBox,
-          Text("This month", style: textTheme.bodyLarge?.copyWith(color: kWhite)),
+          Text(
+            "This month",
+            style: textTheme.bodyLarge?.copyWith(color: kWhite),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -291,7 +294,21 @@ class TransactionTile extends StatelessWidget {
     final bankName = transaction.bankName;
     final DateTime date = transaction.date;
 
+    final iconCodePoint = transaction.iconCodePoint;
+    final iconFontFamily = transaction.iconFontFamily;
+    final iconFontPackage = transaction.iconFontPackage;
+
     final colorFor = (type == 'income' || type == 'borrow') ? kGreen : kRed;
+
+    //use icon data coming from db, fallback to a generic icon if not present
+    final IconData iconData =
+        (iconCodePoint != null)
+            ? IconData(
+              iconCodePoint,
+              fontFamily: iconFontFamily,
+              fontPackage: iconFontPackage,
+            )
+            : FontAwesomeIcons.question;
 
     return GestureDetector(
       onTap: showMyDialog('Note', notes, textTheme, context),
@@ -299,17 +316,12 @@ class TransactionTile extends StatelessWidget {
         elevation: 5,
         margin: const EdgeInsets.symmetric(vertical: 6.0),
         child: ListTile(
-          contentPadding: EdgeInsets.all(10.0),
+          contentPadding: const EdgeInsets.all(10.0),
           leading: GestureDetector(
             onTap: showMyDialog('Category', category, textTheme, context),
             child: CircleAvatar(
               backgroundColor: colorFor,
-              child: Icon(
-                // Ensure categoryIcons is imported from your constants or define a fallback
-                categoryIcons[category] ?? FontAwesomeIcons.question,
-                size: 15,
-                color: kWhite,
-              ),
+              child: Icon(iconData, size: 15, color: kWhite),
             ),
           ),
           title: Column(
@@ -350,10 +362,7 @@ class TransactionTile extends StatelessWidget {
               const SizedBox(height: 4),
               // If your model has a balance field, use it here.
               // Otherwise, you might want to hide this Text widget.
-              Text(
-                balance.toStringAsFixed(2),
-                style: textTheme.bodySmall,
-              ),
+              Text(balance.toStringAsFixed(2), style: textTheme.bodySmall),
             ],
           ),
         ),
