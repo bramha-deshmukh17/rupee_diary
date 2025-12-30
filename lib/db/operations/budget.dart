@@ -40,17 +40,22 @@ class BudgetDao {
     });
   }
 
-  Future<int> updateBudget(int id, double amount) async {
+  Future<bool> updateBudget(int id, double amount) async {
     return await database.update(
-      'budget',
-      {'amount': amount},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+              'budget',
+              {'amount': amount},
+              where: 'id = ?',
+              whereArgs: [id],
+            ) >
+            0
+        ? true
+        : false;
   }
 
-  Future<int> deleteBudget(int id) async {
-    return await database.delete('budget', where: 'id = ?', whereArgs: [id]);
+  Future<bool> deleteBudget(int id) async {
+    return await database.delete('budget', where: 'id = ?', whereArgs: [id]) > 0
+        ? true
+        : false;
   }
 
   void debugPrintBudgets() async {
