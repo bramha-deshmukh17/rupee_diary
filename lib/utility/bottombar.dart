@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../bank/bank.dart';
 import '../budget/budget_screen.dart';
 import '../home/home.dart';
+import '../statistics/statistics_screen.dart';
 import '../utility/constant.dart';
 
 class BottomBar extends StatefulWidget {
@@ -38,7 +39,11 @@ class _BottomBarState extends State<BottomBar> {
           IconButton(
             icon: Icon(FontAwesomeIcons.chartColumn, color: _colorFor(1)),
             tooltip: 'Statistics',
-            onPressed: () {},
+            onPressed: () {
+               if (widget.currentIndex != 1) {
+                Navigator.pushNamed(context, StatisticsScreen.id);
+              }
+            },
           ),
           const SizedBox(width: 40),
           IconButton(
