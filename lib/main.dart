@@ -15,6 +15,7 @@ import './settings/unlock.dart';
 import './transactions/add_transaction.dart';
 import './transactions/history.dart';
 import './budget/budget_screen.dart';
+import './statistics/statistics_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,6 +109,8 @@ class MyApp extends StatelessWidget {
         HistoryScreen.id: (context) => const HistoryScreen(),
 
         BudgetScreen.id: (context)=>const BudgetScreen(),
+
+        StatisticsScreen.id: (context)=>const StatisticsScreen(),
 
         SettingsScreen.id: (context) => SettingsScreen(),
         BillReminder.id: (context) => BillReminder(),

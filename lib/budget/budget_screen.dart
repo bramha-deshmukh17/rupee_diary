@@ -59,7 +59,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
       appBar: Appbar(title: 'Budget', isBackButton: false),
       body: Padding(

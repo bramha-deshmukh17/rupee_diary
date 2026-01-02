@@ -26,14 +26,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   bool _hasMoreData = true; //Stop trying to load if DB is empty
-
-  String? _filterType;
-  int? _filterCategoryId;
-  DateTime? _filterFrom;
-  DateTime? _filterTo;
-  double? _minAmount;
-  double? _maxAmount;
-  int? _filterBankId;
+  TransactionFilter? _filter;
 
   @override
   void initState() {
@@ -52,13 +45,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
   //show the filters sheet to apply/remove filters
   void _showFilterSheet() async {
     final initial = TransactionFilter(
-      type: _filterType,
-      categoryId: _filterCategoryId,
-      from: _filterFrom,
-      to: _filterTo,
-      minAmount: _minAmount,
-      maxAmount: _maxAmount,
-      bankId: _filterBankId,
+      type: _filter?.type,
+      categoryId: _filter?.categoryId,
+      from: _filter?.from,
+      to: _filter?.to,
+      minAmount: _filter?.minAmount,
+      maxAmount: _filter?.maxAmount,
+      bankId: _filter?.bankId,
     );
     // filters taken from FilterSheet widget
     final result = await showModalBottomSheet<TransactionFilter>(
@@ -72,13 +65,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (result != null) {
       //extract filters from result and reload data
       setState(() {
-        _filterType = result.type;
-        _filterCategoryId = result.categoryId; // <-- CHANGED
-        _filterFrom = result.from;
-        _filterTo = result.to;
-        _minAmount = result.minAmount;
-        _maxAmount = result.maxAmount;
-        _filterBankId = result.bankId;
+        _filter = result;
         page = 0;
         _transactions.clear();
         _hasMoreData = true;
@@ -95,13 +82,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final data = await DatabaseHelper.instance.transactionsDao.getFiltered(
       limit: 50,
       offset: 50 * page,
-      bankId: _filterBankId,
-      type: _filterType,
-      categoryId: _filterCategoryId,
-      from: _filterFrom,
-      to: _filterTo,
-      minAmount: _minAmount,
-      maxAmount: _maxAmount,
+      filter: _filter,
     );
     setState(() {
       if (data.length < 50) _hasMoreData = false;
@@ -217,7 +198,12 @@ class TransactionTile extends StatelessWidget {
                 : null,
         contentPadding: const EdgeInsets.all(10.0),
         leading: GestureDetector(
-          onTap: showMyDialog('Category', transaction.category, textTheme, context),
+          onTap: showMyDialog(
+            'Category',
+            transaction.category,
+            textTheme,
+            context,
+          ),
           child: CircleAvatar(
             backgroundColor: colorFor,
             child: Icon(iconData, size: 15, color: kWhite),
@@ -509,9 +495,9 @@ class _FilterSheetState extends State<FilterSheet> {
 
   // Store category selection as id string (e.g. "1"), not name
   String _selCategory = kAll;
+  // String selected in the dropdown (bank id as String or 'all')
   String _selBank = kAll;
 
-  int? _bankId;
   List<BankModel> _banks = [];
 
   //list of categories loaded from db for category filter dropdown
@@ -528,11 +514,10 @@ class _FilterSheetState extends State<FilterSheet> {
     _maxCtrl.text = _f.maxAmount?.toString() ?? '';
 
     _selCategory = _f.categoryId != null ? _f.categoryId.toString() : kAll;
-    _bankId = _f.bankId;
-    _selBank = _bankId != null ? _bankId.toString() : kAll;
+    _selBank = _f.bankId != null ? _f.bankId.toString() : kAll;
 
     _loadBanks();
-    _loadCategories(); //load categories from db for filter dropdown
+    _loadCategories();
   }
 
   @override
@@ -542,20 +527,47 @@ class _FilterSheetState extends State<FilterSheet> {
     super.dispose();
   }
 
+    Future<void> _pickRange() async {
+    final now = DateTime.now();
+    final firstDate = DateTime(now.year - 5);
+    final lastDate = DateTime(now.year + 5);
+
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      initialDateRange:
+          (_f.from != null && _f.to != null)
+              ? DateTimeRange(start: _f.from!, end: _f.to!)
+              : null,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _f = _f.copyWith(from: picked.start, to: picked.end);
+      });
+    }
+  }
+
   //load bank data for bank filter dropdown
-  Future<void> _loadBanks() async {
-    final banks = await DatabaseHelper.instance.bankDao.getBanks();
-    setState(() {
-      _banks = banks;
-      // keep _selBank in sync if initial bank id exists but banks loaded later
-      if (_bankId != null) {
-        final match = _banks.any((b) => b.id == _bankId);
-        if (!match) {
-          _selBank = kAll;
-          _bankId = null;
+    Future<void> _loadBanks() async {
+    try {
+      final banks = await DatabaseHelper.instance.bankDao.getBanks();
+      setState(() {
+        _banks = banks;
+
+        // if currently selected bank id no longer exists, reset to "all"
+        if (_selBank != kAll) {
+          final selId = int.tryParse(_selBank);
+          final exists = selId != null && _banks.any((b) => b.id == selId);
+          if (!exists) {
+            _selBank = kAll;
+          }
         }
-      }
-    });
+      });
+    } catch (_) {
+      showSnack('Failed to load banks', context, error: true);
+    }
   }
 
   //load category data from db for category filter dropdown
@@ -563,58 +575,25 @@ class _FilterSheetState extends State<FilterSheet> {
     try {
       final cats = await DatabaseHelper.instance.categoryDao.getAllCategories();
       setState(() {
-        _categories = cats;
-        //reset selected category if it no longer exists in db
-        if (_f.categoryId != null &&
-            !_categories.any((c) => c.id == _f.categoryId)) {
-          _selCategory = kAll;
-        }
+        //exclude Income, Lend, Borrow categories from filter options
+        _categories =
+            cats.where((c) {
+              final n = c.name.toLowerCase();
+              return n != 'income' && n != 'lend' && n != 'borrow';
+            }).toList();
       });
     } catch (_) {
-      //ignore errors, fallback to "All Categories" only
+      showSnack('Failed to load categories', context, error: true);
     }
   }
 
   //date range picker helper to get data within selected range
-  Future<void> _pickRange() async {
-    final now = DateTime.now();
-    final res = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(now.year - 3),
-      lastDate: DateTime.now(),
-      initialDateRange:
-          (_f.from != null && _f.to != null)
-              ? DateTimeRange(start: _f.from!, end: _f.to!)
-              : DateTimeRange(
-                start: now.subtract(const Duration(days: 7)),
-                end: now,
-              ),
-    );
-    if (res != null) {
-      setState(() {
-        _f = _f.copyWith(from: res.start, to: res.end);
-      });
-    }
-  }
-
-  //clear all filter options
-  void _clearAll() {
-    setState(() {
-      _f = const TransactionFilter();
-      _minCtrl.clear();
-      _maxCtrl.clear();
-      _selCategory = kAll;
-      _selBank = kAll;
-      _bankId = null;
-    });
-  }
-
-  //apply selected filters and return it to previous screen
-  void _apply() {
+    void _apply() {
     final min = double.tryParse(_minCtrl.text.trim());
     final max = double.tryParse(_maxCtrl.text.trim());
     final categoryId = _selCategory == kAll ? null : int.tryParse(_selCategory);
-    final bankId = _selBank == kAll ? null : int.tryParse(_selBank);
+    final bankId =
+        _selBank == kAll ? null : int.tryParse(_selBank);
 
     final result = TransactionFilter(
       type: _f.type,
@@ -629,6 +608,17 @@ class _FilterSheetState extends State<FilterSheet> {
     Navigator.pop(context, result);
   }
 
+  //clear all filter options
+  void _clearAll() {
+    setState(() {
+      _f = const TransactionFilter();
+      _minCtrl.clear();
+      _maxCtrl.clear();
+      _selCategory = kAll;
+      _selBank = kAll;
+    });
+  }
+  
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;

@@ -1,6 +1,8 @@
+import 'package:rupee_diary/statistics/statistics_screen.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../transactions/history.dart';
 import '../model/bank.dart';
 import '../model/transactions.dart';
 
@@ -113,44 +115,38 @@ class TransactionsDao {
   Future<List<TransactionModel>> getFiltered({
     required int limit,
     required int offset,
-    int? bankId,
-    String? type,
-    int? categoryId,
-    DateTime? from,
-    DateTime? to,
-    double? minAmount,
-    double? maxAmount,
+    TransactionFilter? filter,
   }) async {
     final where = <String>[];
     final args = <Object?>[];
 
-    if (bankId != null) {
+    if (filter?.bankId != null) {
       where.add('t.bankId = ?');
-      args.add(bankId);
+      args.add(filter!.bankId);
     }
-    if (type != null) {
+    if (filter?.type != null) {
       where.add('t.type = ?');
-      args.add(type);
+      args.add(filter!.type);
     }
-    if (categoryId != null) {
+    if (filter?.categoryId != null) {
       where.add('cast(categoryId as integer) = ?');
-      args.add(categoryId);
+      args.add(filter!.categoryId);
     }
-    if (from != null) {
+    if (filter?.from != null) {
       where.add('t.date >= ?');
-      args.add(from.toIso8601String());
+      args.add(filter!.from!.toIso8601String());
     }
-    if (to != null) {
+    if (filter?.to != null) {
       where.add('t.date <= ?');
-      args.add(to.toIso8601String());
+      args.add(filter!.to!.toIso8601String());
     }
-    if (minAmount != null) {
+    if (filter?.minAmount != null) {
       where.add('t.amount >= ?');
-      args.add(minAmount);
+      args.add(filter!.minAmount);
     }
-    if (maxAmount != null) {
+    if (filter?.maxAmount != null) {
       where.add('t.amount <= ?');
-      args.add(maxAmount);
+      args.add(filter!.maxAmount);
     }
 
     final whereSql = where.isEmpty ? '' : 'where ${where.join(' and ')}';
@@ -262,11 +258,15 @@ class TransactionsDao {
     return rows.map((e) => TransactionModel.fromMap(e)).toList();
   }
 
+  //here for budget we will fetch transaction data of whole month for all categories
   Future<List<Map<int, double?>>> getCategoryExpense() async {
     final rows = await database.rawQuery('''
       select categoryId, sum(amount) as totalAmount
       from transactions
-      where type = 'expense' and categoryId is not null
+      where type = 'expense'
+        and categoryId is not null
+        and date(date) >= date('now', 'start of month', 'localtime')
+        and date(date) < date('now', 'start of month', '+1 month', 'localtime')
       group by categoryId
       ''');
 
@@ -280,6 +280,157 @@ class TransactionsDao {
       result.add({id: total});
     }
     return result;
+  }
+
+  //top 3 spending category for stats
+  Future<List<Map<String, dynamic>>> getTopSpendingCategory() async {
+    final rows = await database.rawQuery(''' 
+      select 
+        sum(t.amount) as totalSpending,
+        c.id,
+        c.name as category,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package
+      from transactions t
+      join categories c on t.categoryId = c.id
+      where date(t.date) >= date('now', '-30 days', 'localtime')
+        and t.type = 'expense'
+        and t.categoryId is not null
+      group by 
+        c.id,
+        c.name,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package
+      order by totalSpending desc
+      limit 3
+      ''');
+    return rows;
+  }
+
+  //fetch statistics data based on filter
+  Future<dynamic> getStatistics(StatisticsFilter filter) async {}
+
+  //last 5 month transaction data for stats
+  Future<List<Map<String, Object?>>> getLastFiveMonthsExpense() async {
+    final rows = await database.rawQuery('''
+      select
+        date(date, 'start of month', 'localtime') as monthStart,
+        sum(amount) as totalExpense
+      from transactions
+      where type = 'expense'
+        and date(date) >= date('now', 'start of month', '-4 months', 'localtime')
+      group by monthStart
+      order by monthStart
+    ''');
+    return rows;
+  }
+
+
+  void _applyStatsDateAndBankFilter(
+    StatisticsFilter filter,
+    List<String> where,
+    List<Object?> args, {
+    String tableAlias = 't',
+  }) {
+    // Only date range now.
+    // If from & to set -> use that; else -> last 30 days.
+    if (filter.from != null && filter.to != null) {
+      where.add('$tableAlias.date >= ?');
+      where.add('$tableAlias.date <= ?');
+      args.add(filter.from!.toIso8601String());
+      args.add(filter.to!.toIso8601String());
+      return;
+    }
+
+    // default: last 30 days
+    where.add("date($tableAlias.date) >= date('now', '-30 days', 'localtime')");
+  }
+  // top 3 spending categories, filtered by date/bank
+  Future<List<Map<String, dynamic>>> getTopSpendingCategoryForStats(
+    StatisticsFilter filter,
+  ) async {
+    final where = <String>["t.type = 'expense'", 't.categoryId is not null'];
+    final args = <Object?>[];
+
+    _applyStatsDateAndBankFilter(filter, where, args, tableAlias: 't');
+    final whereSql = 'where ${where.join(' and ')}';
+
+    final rows = await database.rawQuery('''
+      select 
+        sum(t.amount) as totalSpending,
+        c.id,
+        c.name as category,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package
+      from transactions t
+      join categories c on t.categoryId = c.id
+      $whereSql
+      group by 
+        c.id,
+        c.name,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package
+      order by totalSpending desc
+      limit 3
+      ''', args);
+    return rows;
+  }
+
+  // category-wise expense for pie chart, filtered by date/bank
+  Future<List<Map<String, dynamic>>> getCategoryExpenseForStats(
+    StatisticsFilter filter,
+  ) async {
+    final where = <String>["t.type = 'expense'", 't.categoryId is not null'];
+    final args = <Object?>[];
+
+    _applyStatsDateAndBankFilter(filter, where, args, tableAlias: 't');
+    final whereSql = 'where ${where.join(' and ')}';
+
+    final rows = await database.rawQuery('''
+      select 
+        c.id,
+        c.name as category,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package,
+        sum(t.amount) as totalExpense
+      from transactions t
+      join categories c on t.categoryId = c.id
+      $whereSql
+      group by 
+        c.id,
+        c.name,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package
+      order by totalExpense desc
+      ''', args);
+    return rows;
+  }
+
+  // last 5 months income/expense (bank-filtered; time = last 5 months)
+  Future<List<Map<String, Object?>>> getLastFiveMonthsStats({
+    int? bankId,
+  }) async {
+    final rows = await database.rawQuery(
+      '''
+      select
+        date(date, 'start of month', 'localtime') as monthStart,
+        sum(case when type = 'income' then amount else 0 end) as totalIncome,
+        sum(case when type = 'expense' then amount else 0 end) as totalExpense
+      from transactions
+      where date(date) >= date('now', 'start of month', '-4 months', 'localtime')
+        and (? is null or bankId = ?)
+      group by monthStart
+      order by monthStart
+      ''',
+      [bankId, bankId],
+    );
+    return rows;
   }
 
   // ===========================

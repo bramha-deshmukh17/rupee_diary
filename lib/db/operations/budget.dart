@@ -64,4 +64,15 @@ class BudgetDao {
       debugPrint('Budgets: $budgets');
     }
   }
+
+  Future<double> getTotalBudgetAmount() async {
+    final rows = await database.rawQuery(
+      'select coalesce(sum(amount), 0) as totalBudget from budget',
+    );
+    if (rows.isEmpty) return 0.0;
+    final v = rows.first['totalBudget'];
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
 }

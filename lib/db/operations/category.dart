@@ -65,7 +65,7 @@ class CategoryDao {
   Future<List<CategoryModel>> getExpenseCategories() async {
     final rows = await database.rawQuery('''
       select * from categories
-      where name not in ('Income', 'Lend', 'Borrow', 'Settlement')
+      where name not in ('Income', 'Lend', 'Borrow')
     ''');
     return rows.map((e) => CategoryModel.fromMap(e)).toList();
   }
