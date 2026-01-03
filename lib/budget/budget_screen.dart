@@ -33,7 +33,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   void loadBudgets() async {
     // Load budgets from the database
-    budgets = await DatabaseHelper.instance.budgetDao.getAllBudgets();
+    budgets = await DatabaseHelper.instance.budgetDao.getAllBudgetsOfTheMonth(DateTime.now().year, DateTime.now().month);
 
     // Calculate the monthly budget total
     double total = 0;
@@ -144,10 +144,16 @@ class _AddBudgetDialogState extends State<AddBudgetDialog> {
     formatIndianCurrencyInput(_textEditingController, value);
   }
 
-  void add() async {
+    void add() async {
     try {
+      final now = DateTime.now();
       await DatabaseHelper.instance.budgetDao.insertBudget(
-        BudgetModel(categoryId: selectedCategory!.id, amount: _extractAmount()),
+        BudgetModel(
+          categoryId: selectedCategory!.id,
+          year: now.year,
+          month: now.month,
+          amount: _extractAmount(),
+        ),
       );
       showSnack("Budget added sucessfully!", context);
       widget.onSave();

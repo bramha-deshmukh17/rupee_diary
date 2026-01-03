@@ -10,8 +10,11 @@ class BudgetDao {
   static String createTable = '''
     create table budget(
       id integer primary key autoincrement,
-      categoryId integer unique,
+      categoryId integer not null,
+      year integer not null,
+      month integer not null,
       amount real not null,
+      unique(categoryId, year, month),
       foreign key (categoryId) references categories(id) on delete cascade
     );
   ''';
@@ -20,12 +23,13 @@ class BudgetDao {
     return await database.insert('budget', budget.toMap());
   }
 
-  Future<List<Map<String, dynamic>>> getAllBudgets() async {
+  Future<List<Map<String, dynamic>>> getAllBudgetsOfTheMonth(int year, int month) async {
     final List<Map<String, dynamic>> maps = await database.rawQuery('''
       SELECT b.id, b.amount, c.name as category, c.id as categoryId, c.icon_code_point, c.icon_font_family, c.icon_font_package
       FROM budget b
       JOIN categories c ON b.categoryId = c.id
-    ''');
+      WHERE b.year = ? AND b.month = ?
+    ''', [year, month]);
 
     return List.generate(maps.length, (i) {
       return {
@@ -65,9 +69,10 @@ class BudgetDao {
     }
   }
 
-  Future<double> getTotalBudgetAmount() async {
+  Future<double> getTotalBudgetAmount(int year, int month) async {
     final rows = await database.rawQuery(
-      'select coalesce(sum(amount), 0) as totalBudget from budget',
+      'select coalesce(sum(amount), 0) as totalBudget from budget where year = ? and month = ?',
+      [year, month],
     );
     if (rows.isEmpty) return 0.0;
     final v = rows.first['totalBudget'];

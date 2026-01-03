@@ -7,7 +7,7 @@ void showSnack(String message, BuildContext context, {bool error = false}) {
   messenger.clearSnackBars();
   messenger.showSnackBar(
     SnackBar(
-      content: Text(message, style: textTheme.bodyLarge,),
+      content: Text(message, style: textTheme.bodyLarge?.copyWith(color: kWhite),),
       backgroundColor: error ? kRed : kGreen,
       behavior: SnackBarBehavior.floating,
       duration: Duration(seconds: error ? 3 : 2),

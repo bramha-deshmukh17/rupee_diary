@@ -31,9 +31,7 @@ class _BudgetVsIncomeExpenseLineSectionState
       final txDao = DatabaseHelper.instance.transactionsDao;
       final budDao = DatabaseHelper.instance.budgetDao;
 
-      // bank filter removed – always use all banks
       final rows = await txDao.getLastFiveMonthsStats();
-      final totalBudget = await budDao.getTotalBudgetAmount();
 
       // Map DB rows by monthStart string -> (income, expense)
       final byMonth = <String, Map<String, double>>{};
@@ -60,12 +58,19 @@ class _BudgetVsIncomeExpenseLineSectionState
             '${month.month.toString().padLeft(2, '0')}-01';
 
         final row = byMonth[key] ?? const {'income': 0.0, 'expense': 0.0};
+
+        // fetch budget for this specific month
+        final budgetForMonth = await budDao.getTotalBudgetAmount(
+          month.year,
+          month.month,
+        );
+
         pts.add(
           _MonthLinePoint(
             month: month,
             income: row['income'] ?? 0.0,
             expense: row['expense'] ?? 0.0,
-            budget: totalBudget,
+            budget: budgetForMonth,
           ),
         );
       }

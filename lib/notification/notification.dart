@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../db/database_helper.dart';
 import '../db/model/bill_reminder.dart';
-import '../db/model/category.dart'; //load category names and icons from db
+import '../db/model/category.dart';
 import '../services/reminder_notification.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
@@ -24,11 +24,86 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   //list of categories from db for mapping name -> icon
   List<CategoryModel> _categories = [];
 
+  // current month budget status (category-wise)
+  bool _isBudgetOver = false;
+  double _currentMonthBudget = 0.0;
+  double _currentMonthExpense = 0.0;
+  List<_OverBudgetCategory> _overBudgetCategories = [];
+
   @override
   void initState() {
     super.initState();
     _loadPendingNotifications();
-    _loadCategories(); //load categories and icons from db so notifications use same icons as rest of app
+    _loadCategories();
+    _checkCurrentMonthBudget();
+  }
+
+  Future<void> _checkCurrentMonthBudget() async {
+    try {
+      final now = DateTime.now();
+      final budDao = DatabaseHelper.instance.budgetDao;
+      final txDao = DatabaseHelper.instance.transactionsDao;
+
+      // 1. Get category-wise budgets for current month
+      final budgetRows = await budDao.getAllBudgetsOfTheMonth(
+        now.year,
+        now.month,
+      );
+      final budgetByCat = <int, Map<String, dynamic>>{};
+      for (final row in budgetRows) {
+        final catId = row['categoryId'] as int;
+        final name = row['category'] as String;
+        final amount = (row['amount'] as num).toDouble();
+        budgetByCat[catId] = {'name': name, 'budget': amount};
+      }
+
+      // 2. Get category-wise expenses for current month
+      //    getCategoryExpense() should already be scoped to current month
+      final expenseRows = await txDao.getCategoryExpense();
+      final expenseByCat = <int, double>{};
+      for (final m in expenseRows) {
+        m.forEach((catId, val) {
+          final v = (val as num?)?.toDouble() ?? 0.0;
+          expenseByCat[catId] = (expenseByCat[catId] ?? 0.0) + v;
+        });
+      }
+
+      // overall totals
+      double totalBudget = 0.0;
+      double totalExpense = 0.0;
+      budgetByCat.forEach((catId, info) {
+        totalBudget += (info['budget'] as double);
+        totalExpense += expenseByCat[catId] ?? 0.0;
+      });
+
+      // 3. Collect categories where expense > budget
+      final over = <_OverBudgetCategory>[];
+      budgetByCat.forEach((catId, info) {
+        final budget = info['budget'] as double;
+        final spent = expenseByCat[catId] ?? 0.0;
+        if (budget > 0 && spent > budget) {
+          over.add(
+            _OverBudgetCategory(
+              categoryId: catId,
+              name: info['name'] as String,
+              budget: budget,
+              spent: spent,
+            ),
+          );
+        }
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _currentMonthBudget = totalBudget;
+        _currentMonthExpense = totalExpense;
+        _overBudgetCategories = over;
+        _isBudgetOver = over.isNotEmpty;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      showSnack("Failed to check budget status", context, error: true);
+    }
   }
 
   //load all categories from db so notification list can use icon info from db instead of constant.dart
@@ -40,7 +115,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         _categories = cats;
       });
     } catch (_) {
-      //ignore errors and fallback to default icon when category is not available
+      showSnack("Failed to load categories", context, error: true);
     }
   }
 
@@ -157,89 +232,158 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
     return Scaffold(
       appBar: Appbar(title: 'Notifications', isBackButton: true),
-      body:
-          _items.isEmpty
-              ? Center(
-                child: Text(
-                  'No pending notifications',
-                  style: textTheme.headlineMedium,
-                ),
-              )
-              : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _items.length,
-                itemBuilder: (context, i) {
-                  final r = _items[i];
-
-                  // find matching category from db using reminder.categoryId, fallback to generic icon
-                  final CategoryModel cat = _categories.firstWhere(
-                    (c) => c.id == r.categoryId,
-                    orElse:
-                        () =>
-                            _categories.isNotEmpty
-                                ? _categories.first
-                                : CategoryModel(
-                                  id: -1,
-                                  name: '',
-                                  icon: FontAwesomeIcons.shapes,
-                                ),
-                  );
-
-                  final iconData =
-                      cat.id != -1 ? cat.icon : FontAwesomeIcons.shapes;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      title: Row(
-                        children: [
-                          Icon(
-                            iconData, // category icon taken from db
-                            size: 20,
-                            color: kPrimaryColor,
-                          ),
-                          kwBox,
-                          Expanded(
-                            child: Text(
-                              r.title,
-                              style: textTheme.bodyLarge,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Due: ${r.dueDate.toLocal().toIso8601String().split('T')[0]}',
-                            style: textTheme.bodyMedium?.copyWith(color: kRed),
-                          ),
-                          Text('₹ ${r.amount.toStringAsFixed(2)}'),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () => _markAsPaid(r),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: kPrimaryColor,
-                            ),
-                            child: Text(
-                              'Mark as Paid',
-                              style: textTheme.bodyLarge?.copyWith(
-                                color: kWhite,
+      body: Column(
+        children: [
+          if (_isBudgetOver)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: kRed),
+                      kwBox,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Some category budgets are over',
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: kRed,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            ..._overBudgetCategories.map(
+                              (c) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2.0,
+                                ),
+                                child: Text(
+                                  '${c.name}: Spent ₹ ${c.spent.toStringAsFixed(0)} '
+                                  'of ₹ ${c.budget.toStringAsFixed(0)}',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: kRed,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    ],
+                  ),
+                ),
               ),
+            ),
+          Expanded(
+            child:
+                _items.isEmpty
+                    ? Center(
+                      child: Text(
+                        'No pending reminder notifications',
+                        style: textTheme.headlineMedium,
+                      ),
+                    )
+                    : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _items.length,
+                      itemBuilder: (context, i) {
+                        final r = _items[i];
+
+                        // find matching category from db using reminder.categoryId, fallback to generic icon
+                        final CategoryModel cat = _categories.firstWhere(
+                          (c) => c.id == r.categoryId,
+                          orElse:
+                              () =>
+                                  _categories.isNotEmpty
+                                      ? _categories.first
+                                      : CategoryModel(
+                                        id: -1,
+                                        name: '',
+                                        icon: FontAwesomeIcons.shapes,
+                                      ),
+                        );
+
+                        final iconData =
+                            cat.id != -1 ? cat.icon : FontAwesomeIcons.shapes;
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            title: Row(
+                              children: [
+                                Icon(
+                                  iconData, // category icon taken from db
+                                  size: 20,
+                                  color: kPrimaryColor,
+                                ),
+                                kwBox,
+                                Expanded(
+                                  child: Text(
+                                    r.title,
+                                    style: textTheme.bodyLarge,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Due: ${r.dueDate.toLocal().toIso8601String().split('T')[0]}',
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: kRed,
+                                  ),
+                                ),
+                                Text('₹ ${r.amount.toStringAsFixed(2)}'),
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  onPressed: () => _markAsPaid(r),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: kPrimaryColor,
+                                  ),
+                                  child: Text(
+                                    'Mark as Paid',
+                                    style: textTheme.bodyLarge?.copyWith(
+                                      color: kWhite,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+          ),
+        ],
+      ),
     );
   }
+}
+
+// Add this helper class at the bottom of the file
+class _OverBudgetCategory {
+  final int categoryId;
+  final String name;
+  final double budget;
+  final double spent;
+
+  _OverBudgetCategory({
+    required this.categoryId,
+    required this.name,
+    required this.budget,
+    required this.spent,
+  });
 }

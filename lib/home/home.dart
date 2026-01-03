@@ -22,7 +22,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
   int _badgeCount = 0;
-  // ignore: unused_field
   bool _alive = true;
   double? totalBalance, totalIncome, totalExpense;
   List<TransactionModel>? latestTransaction;
@@ -89,15 +88,53 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   //refresh the notification count on the bell icon
   Future<void> _refreshBadge() async {
     try {
-      final c =
+      final reminderCount =
           await ReminderNotificationService.getTodayTomorrowPendingCount();
+      final overBudgetCount = await _getOverBudgetCategoryCount();
       if (!mounted) return;
-      setState(() => _badgeCount = c);
+      setState(() => _badgeCount = reminderCount + overBudgetCount);
     } catch (e) {
       if (!mounted) return;
-
       showSnack('Failed to refresh reminders', context, error: true);
     }
+  }
+
+  // get number of over-budget categories for current month
+  Future<int> _getOverBudgetCategoryCount() async {
+    final now = DateTime.now();
+    final budDao = DatabaseHelper.instance.budgetDao;
+    final txDao = DatabaseHelper.instance.transactionsDao;
+
+    // category-wise budgets for current month
+    final budgetRows = await budDao.getAllBudgetsOfTheMonth(
+      now.year,
+      now.month,
+    );
+    final budgetByCat = <int, double>{};
+    for (final row in budgetRows) {
+      final catId = row['categoryId'] as int;
+      final amount = (row['amount'] as num).toDouble();
+      budgetByCat[catId] = amount;
+    }
+
+    // category-wise expenses for current month
+    final expenseRows = await txDao.getCategoryExpense();
+    final expenseByCat = <int, double>{};
+    for (final m in expenseRows) {
+      m.forEach((catId, val) {
+        final v = (val as num?)?.toDouble() ?? 0.0;
+        expenseByCat[catId] = (expenseByCat[catId] ?? 0.0) + v;
+      });
+    }
+
+    int count = 0;
+    budgetByCat.forEach((catId, budget) {
+      final spent = expenseByCat[catId] ?? 0.0;
+      if (budget > 0 && spent > budget) {
+        count++;
+      }
+    });
+    return count;
   }
 
   @override
