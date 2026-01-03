@@ -1,5 +1,4 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:flutter/foundation.dart';
 
 import '../model/budget.dart';
 
@@ -60,13 +59,6 @@ class BudgetDao {
     return await database.delete('budget', where: 'id = ?', whereArgs: [id]) > 0
         ? true
         : false;
-  }
-
-  void debugPrintBudgets() async {
-    final budgets = await database.query('budget');
-    if (kDebugMode) {
-      debugPrint('Budgets: $budgets');
-    }
   }
 
   Future<double> getTotalBudgetAmount(int year, int month) async {

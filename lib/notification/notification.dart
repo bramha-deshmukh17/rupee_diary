@@ -26,8 +26,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   // current month budget status (category-wise)
   bool _isBudgetOver = false;
-  double _currentMonthBudget = 0.0;
-  double _currentMonthExpense = 0.0;
   List<_OverBudgetCategory> _overBudgetCategories = [];
 
   @override
@@ -68,14 +66,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         });
       }
 
-      // overall totals
-      double totalBudget = 0.0;
-      double totalExpense = 0.0;
-      budgetByCat.forEach((catId, info) {
-        totalBudget += (info['budget'] as double);
-        totalExpense += expenseByCat[catId] ?? 0.0;
-      });
-
       // 3. Collect categories where expense > budget
       final over = <_OverBudgetCategory>[];
       budgetByCat.forEach((catId, info) {
@@ -95,8 +85,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
       if (!mounted) return;
       setState(() {
-        _currentMonthBudget = totalBudget;
-        _currentMonthExpense = totalExpense;
         _overBudgetCategories = over;
         _isBudgetOver = over.isNotEmpty;
       });
@@ -238,7 +226,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Card(
-                elevation: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
@@ -313,7 +300,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                             cat.id != -1 ? cat.icon : FontAwesomeIcons.shapes;
 
                         return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
                             title: Row(
                               children: [

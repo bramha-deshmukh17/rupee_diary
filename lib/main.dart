@@ -16,6 +16,7 @@ import './transactions/add_transaction.dart';
 import './transactions/history.dart';
 import './budget/budget_screen.dart';
 import './statistics/statistics_screen.dart';
+import './settings/how_to_use.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,22 +77,41 @@ class MyApp extends StatelessWidget {
       // 1. Your existing light theme
       theme: ThemeData(
         brightness: Brightness.light,
+        cardTheme: CardThemeData(
+          color: kWhite,
+          shadowColor: const Color.fromARGB(255, 22, 21, 21),
+          margin: EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: kGrey),
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+          ),
+        ),
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: kWhite,
         textTheme: poppinsTextTheme(Brightness.light),
-        appBarTheme: const AppBarTheme(backgroundColor: kWhite, elevation: 10),
+        appBarTheme: const AppBarTheme(backgroundColor: kWhite),
+        bottomAppBarTheme: const BottomAppBarThemeData(color: Color.fromARGB(255, 245, 245, 245)),
       ),
 
       // 2. Add the dark theme
       darkTheme: ThemeData(
         brightness: Brightness.dark,
+        cardTheme: CardThemeData(
+          color: const Color.fromARGB(255, 18, 18, 18),
+          shadowColor: const Color.fromARGB(255, 233, 230, 230),
+          margin: EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: const Color.fromARGB(255, 52, 52, 52)),
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+          ),
+        ),
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: kBlack,
         textTheme: poppinsTextTheme(Brightness.dark),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: kBlack, // Sets AppBar background to white
-          elevation: 10,
-        ),
+        appBarTheme: const AppBarTheme(backgroundColor: kBlack),
+        bottomAppBarTheme: const BottomAppBarThemeData(color: Color.fromARGB(255, 18, 18, 18),),
       ),
 
       // 3Set the themeMode to follow the system
@@ -99,22 +119,26 @@ class MyApp extends StatelessWidget {
 
       routes: <String, WidgetBuilder>{
         '/': (context) => SplashScreen(),
-        Unlock.id:(context) => const Unlock(),
+        Unlock.id: (context) => const Unlock(),
 
         HomeScreen.id: (context) => HomeScreen(),
-        NotificationCenterScreen.id:(context) => const NotificationCenterScreen(),
 
         BankScreen.id: (context) => const BankScreen(),
+
         AddTransaction.id: (context) => const AddTransaction(),
         HistoryScreen.id: (context) => const HistoryScreen(),
 
-        BudgetScreen.id: (context)=>const BudgetScreen(),
+        BudgetScreen.id: (context) => const BudgetScreen(),
 
-        StatisticsScreen.id: (context)=>const StatisticsScreen(),
+        StatisticsScreen.id: (context) => const StatisticsScreen(),
 
         SettingsScreen.id: (context) => SettingsScreen(),
         BillReminder.id: (context) => BillReminder(),
-        SecurityScreen.id:(context) => const SecurityScreen(),
+        SecurityScreen.id: (context) => const SecurityScreen(),
+        HowToUseScreen.id: (context) => const HowToUseScreen(),
+
+        NotificationCenterScreen.id:
+            (context) => const NotificationCenterScreen(),
       },
       initialRoute: '/',
     );
@@ -133,7 +157,7 @@ class ThemeProvider extends ChangeNotifier {
   void toggleTheme(bool isOn) {
     _themeMode = isOn ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
-  } 
+  }
 }
 
 TextTheme poppinsTextTheme(Brightness brightness) {
@@ -170,7 +194,7 @@ TextTheme poppinsTextTheme(Brightness brightness) {
           letterSpacing: 0.25,
           color: brightness == Brightness.dark ? kWhite : kBlack,
         ),
-       
+
         bodySmall: textTheme.bodySmall?.copyWith(
           fontWeight: FontWeight.w500,
           fontSize: 12,

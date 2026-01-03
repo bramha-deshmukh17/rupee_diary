@@ -63,7 +63,6 @@ class _SpendingBarChartState extends State<SpendingBarChart> {
 
     if (_data.isEmpty) {
       return Card(
-        elevation: 10,
         margin: const EdgeInsets.all(10.0),
         child: const Padding(
           padding: EdgeInsets.all(16),
@@ -78,7 +77,7 @@ class _SpendingBarChartState extends State<SpendingBarChart> {
     final double chartMaxY = maxData <= 0 ? 1 : maxData * 1.4;
 
     return Card(
-      elevation: 10,
+      elevation: 8,
       child: Padding(
         padding: EdgeInsetsGeometry.all(15.0),
         child: Column(

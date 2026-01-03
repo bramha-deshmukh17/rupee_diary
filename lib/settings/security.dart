@@ -118,8 +118,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
           Padding(
             padding: EdgeInsets.all(10.0),
             child: Card(
-              elevation: 0,
-              margin: const EdgeInsets.symmetric(vertical: 6),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -139,7 +137,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
           Padding(
             padding: EdgeInsets.all(16.0),
             child: Card(
-              elevation: 5.0,
               margin: const EdgeInsets.symmetric(vertical: 6),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -192,6 +189,8 @@ class _PasswordDialogState extends State<PasswordDialog> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return AlertDialog(
+      backgroundColor: Theme.of(context).cardTheme.color,
+      shadowColor: Theme.of(context).cardTheme.shadowColor,
       title: Text("Enter PIN", style: textTheme.headlineMedium),
       content: TextField(
         style: textTheme.bodyLarge,

@@ -98,7 +98,6 @@ class _BudgetVsIncomeExpenseLineSectionState
 
     if (_loading) {
       return const Card(
-        elevation: 10,
         child: Padding(
           padding: EdgeInsets.all(16),
           child: Center(child: CircularProgressIndicator()),
@@ -108,7 +107,6 @@ class _BudgetVsIncomeExpenseLineSectionState
 
     if (_points.isEmpty) {
       return Card(
-        elevation: 10,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text('No data for last 5 months', style: textTheme.bodyMedium),
@@ -129,7 +127,7 @@ class _BudgetVsIncomeExpenseLineSectionState
     maxY *= 1.4; // some headroom
 
     return Card(
-      elevation: 10,
+      elevation: 8,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -118,84 +118,74 @@ class CategoryBudgetCard extends StatelessWidget {
     final progress = (spent / total).clamp(0.0, 1.0);
     final remaining = (total - spent).abs();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.20),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // Icon box
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: kPrimaryColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: kPrimaryColor, size: 20),
-              ),
-              kwBox,
-
-              // Title
-              Expanded(
-                child: Text(
-                  title,
-                  style: textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+    return Card(
+      child: Padding(
+        padding: EdgeInsetsGeometry.all(10.0),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Icon box
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor.withAlpha(38),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  child: Icon(icon, color: kPrimaryColor, size: 20),
                 ),
-              ),
+                kwBox,
 
-              // Amount
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Icon(FontAwesomeIcons.pen, size: 15.0),
-                  Text(
-                    "₹${spent.toInt()} / ₹${total.toInt()}",
+                // Title
+                Expanded(
+                  child: Text(
+                    title,
                     style: textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isOver
-                        ? "₹${remaining.toInt()} over"
-                        : "₹${remaining.toInt()} left",
-                    style: textTheme.bodySmall?.copyWith(
-                      color: isOver ? kRed : kGrey,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          khBox,
+                ),
 
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: Colors.grey.shade300,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                isOver ? kRed : kSecondaryColor,
+                // Amount
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Icon(FontAwesomeIcons.pen, size: 15.0),
+                    Text(
+                      "₹${spent.toInt()} / ₹${total.toInt()}",
+                      style: textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isOver
+                          ? "₹${remaining.toInt()} over"
+                          : "₹${remaining.toInt()} left",
+                      style: textTheme.bodySmall?.copyWith(
+                        color: isOver ? kRed : kGrey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            khBox,
+
+            // Progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: Colors.grey.shade300,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isOver ? kRed : kSecondaryColor,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -225,7 +215,10 @@ class EditBudget extends StatelessWidget {
   Future<bool> update() async {
     final amount = _extractAmount();
     try {
-      return await DatabaseHelper.instance.budgetDao.updateBudget(budgetId, amount);
+      return await DatabaseHelper.instance.budgetDao.updateBudget(
+        budgetId,
+        amount,
+      );
     } catch (e) {
       return false;
     }
@@ -236,6 +229,8 @@ class EditBudget extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     amountController.text = amount.toString();
     return AlertDialog(
+      backgroundColor: Theme.of(context).cardTheme.color,
+      shadowColor: Theme.of(context).cardTheme.shadowColor,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -346,7 +341,6 @@ class DeleteBudgetDialog extends StatelessWidget {
                 }
               },
               style: ElevatedButton.styleFrom(
-                
                 backgroundColor: kPrimaryColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(

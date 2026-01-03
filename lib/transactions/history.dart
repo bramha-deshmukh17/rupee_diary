@@ -57,6 +57,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final result = await showModalBottomSheet<TransactionFilter>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).cardTheme.color,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -188,8 +189,6 @@ class TransactionTile extends StatelessWidget {
             : FontAwesomeIcons.question;
 
     return Card(
-      elevation: 5,
-      margin: const EdgeInsets.symmetric(vertical: 10.0),
       child: ListTile(
         onTap: showMyDialog('Note', transaction.notes, textTheme, context),
         onLongPress:
@@ -273,6 +272,8 @@ class TransactionTile extends StatelessWidget {
         context: context,
         builder: (context) {
           return AlertDialog(
+            backgroundColor: Theme.of(context).cardTheme.color,
+            shadowColor: Theme.of(context).cardTheme.shadowColor,
             title: Text(
               title,
               style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
@@ -300,6 +301,8 @@ class TransactionTile extends StatelessWidget {
         context: context,
         builder:
             (_) => AlertDialog(
+              backgroundColor: Theme.of(context).cardTheme.color,
+              shadowColor: Theme.of(context).cardTheme.shadowColor,
               title: Text('Mark as Returned', style: textTheme.bodyLarge),
               content: Text(
                 transaction.type == 'lend'

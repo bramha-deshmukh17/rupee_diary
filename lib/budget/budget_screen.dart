@@ -62,7 +62,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return Scaffold(
       appBar: Appbar(title: 'Budget', isBackButton: false),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 25.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 1),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -168,6 +168,8 @@ class _AddBudgetDialogState extends State<AddBudgetDialog> {
     final textTheme = Theme.of(context).textTheme;
 
     return AlertDialog(
+      backgroundColor: Theme.of(context).cardTheme.color,
+      shadowColor: Theme.of(context).cardTheme.shadowColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Padding(
         padding: const EdgeInsets.all(20),
@@ -176,7 +178,7 @@ class _AddBudgetDialogState extends State<AddBudgetDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<CategoryModel>(
-                value: selectedCategory,
+                initialValue: selectedCategory,
                 items:
                     categoriesData
                         .map(
@@ -263,6 +265,13 @@ class MonthlyBudgetSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
+        boxShadow:[
+                BoxShadow(
+                  color: Theme.of(context).cardTheme.shadowColor!,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
         borderRadius: BorderRadius.circular(16),
         gradient: const LinearGradient(
           colors: [kPrimaryColor, kSecondaryColor],
@@ -297,7 +306,7 @@ class MonthlyBudgetSection extends StatelessWidget {
               fontWeight: FontWeight.bold,
               shadows: [
                 Shadow(
-                  color: kBlack.withOpacity(0.3),
+                  color: kBlack.withAlpha(77),
                   offset: const Offset(0, 4),
                   blurRadius: 4,
                 ),
@@ -313,9 +322,9 @@ class MonthlyBudgetSection extends StatelessWidget {
           ClipRRect(
             borderRadius: const BorderRadius.all(Radius.circular(50.0)),
             child: LinearProgressIndicator(
-              value: 0.5,
+              value: 0.5, 
               valueColor: const AlwaysStoppedAnimation<Color>(kWhite),
-              backgroundColor: kWhite.withOpacity(0.3),
+              backgroundColor: kWhite.withAlpha(77),
               minHeight: 10,
             ),
           ),

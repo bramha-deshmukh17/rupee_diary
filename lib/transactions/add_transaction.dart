@@ -465,6 +465,8 @@ class _AddTransactionState extends State<AddTransaction> {
       context: context,
       builder:
           (_) => AlertDialog(
+            backgroundColor: Theme.of(context).cardTheme.color,
+            shadowColor: Theme.of(context).cardTheme.shadowColor,
             title: Text('No Banks Found', style: textTheme.bodyLarge),
             content: Text(
               'Add a bank before adding transactions.',
@@ -509,7 +511,7 @@ class _TileCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: kGrey.withAlpha(10),
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: kGrey.withAlpha(100)),
         boxShadow: [
@@ -525,7 +527,7 @@ class _TileCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: kSecondaryColor.withOpacity(0.1),
+              color: kSecondaryColor.withAlpha(25),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: kSecondaryColor),

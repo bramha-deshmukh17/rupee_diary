@@ -1,7 +1,5 @@
 import 'package:rupee_diary/statistics/statistics_screen.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:flutter/foundation.dart';
-
 import '../../transactions/history.dart';
 import '../model/bank.dart';
 import '../model/transactions.dart';
@@ -431,23 +429,5 @@ class TransactionsDao {
       [bankId, bankId],
     );
     return rows;
-  }
-
-  // ===========================
-  // DEBUG: PARSED MODELS
-  Future<void> debugPrintAllModels() async {
-    final list = await getAll(1000, 0);
-    debugPrint('💳 ===== TRANSACTIONS (MODELS) =====');
-    if (list.isEmpty) {
-      debugPrint('⚠️ No transactions found');
-    } else {
-      for (final t in list) {
-        debugPrint(
-          '🧾 ID: ${t.id} | BANK: ${t.bankName} | ${t.type} | ₹${t.amount} | BALANCE: ${t.balance}'
-          '| DATE: ${t.date.toIso8601String()} | CATEGORY: ${t.categoryId} | NOTES: ${t.notes}',
-        );
-      }
-    }
-    debugPrint('💳 ===== END =====');
   }
 }

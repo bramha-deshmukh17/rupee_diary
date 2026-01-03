@@ -1,5 +1,4 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:flutter/foundation.dart';
 import '../model/bill_reminder.dart';
 
 class BillReminderDao {
@@ -79,17 +78,5 @@ class BillReminderDao {
       where: 'id = ?',
       whereArgs: [id],
     );
-  }
-
-  // Debug parsed models (relies on BillReminderModel.fromMap)
-  Future<void> debugPrintAllModels() async {
-    final list = await getAll();
-    debugPrint('===== bill reminders (models) =====');
-    for (final r in list) {
-      debugPrint(
-        'id:${r.id} title:${r.title} amount:${r.amount} due:${r.dueDate.toIso8601String()} recurring:${r.isRecurring} paid:${r.isPaid}',
-      );
-    }
-    debugPrint('===== end =====');
   }
 }

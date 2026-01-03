@@ -23,7 +23,6 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return AppBar(
-      elevation: 0,
       automaticallyImplyLeading: false,
 
       leading:

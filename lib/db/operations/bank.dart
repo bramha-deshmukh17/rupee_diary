@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../model/bank.dart';
@@ -64,20 +63,5 @@ class BankDao {
         whereArgs: [id],
       );
     });
-  }
-
-  // ===========================
-  // DEBUG: PARSED BANK MODELS
-  Future<void> debugPrintAllModels() async {
-    final list = await getBanks();
-    debugPrint('🏦 ===== BANK TABLE (MODELS) =====');
-    if (list.isEmpty) {
-      debugPrint('⚠️ No bank records found');
-    } else {
-      for (final b in list) {
-        debugPrint('💰 ID: ${b.id} | NAME: ${b.name} | BALANCE: ₹${b.balance}');
-      }
-    }
-    debugPrint('🏦 ===== END =====');
   }
 }

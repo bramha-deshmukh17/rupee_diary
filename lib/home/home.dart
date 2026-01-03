@@ -22,7 +22,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
   int _badgeCount = 0;
-  bool _alive = true;
   double? totalBalance, totalIncome, totalExpense;
   List<TransactionModel>? latestTransaction;
 
@@ -75,7 +74,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void dispose() {
     routeObserver.unsubscribe(this);
-    _alive = false;
     super.dispose();
   }
 
@@ -141,23 +139,21 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: Appbar(title: "Home", appbarIcons: true, badgeCount: _badgeCount),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              khBox,
-              BalanceCard(
-                balance: totalBalance ?? 0.0,
-                income: totalIncome ?? 0.0,
-                expense: totalExpense ?? 0.0,
-              ),
-              khBox,
-              // Pass the list of transactions to the list widget
-              TransactionsList(transactions: latestTransaction),
-            ],
-          ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 1),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            khBox,
+            BalanceCard(
+              balance: totalBalance ?? 0.0,
+              income: totalIncome ?? 0.0,
+              expense: totalExpense ?? 0.0,
+            ),
+            khBox,
+            // Pass the list of transactions to the list widget
+            TransactionsList(transactions: latestTransaction),
+          ],
         ),
       ),
       bottomNavigationBar: BottomBar(currentIndex: 0),
@@ -196,6 +192,14 @@ class BalanceCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
+        color: Theme.of(context).cardTheme.color,
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).cardTheme.shadowColor!,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
         gradient: const LinearGradient(
           colors: [kPrimaryColor, kSecondaryColor],
           begin: Alignment.topLeft,
@@ -350,8 +354,6 @@ class TransactionTile extends StatelessWidget {
     return GestureDetector(
       onTap: showMyDialog('Note', notes, textTheme, context),
       child: Card(
-        elevation: 5,
-        margin: const EdgeInsets.symmetric(vertical: 6.0),
         child: ListTile(
           contentPadding: const EdgeInsets.all(10.0),
           leading: GestureDetector(
@@ -422,6 +424,8 @@ class TransactionTile extends StatelessWidget {
         context: context,
         builder: (context) {
           return AlertDialog(
+            backgroundColor: Theme.of(context).cardTheme.color,
+            shadowColor: Theme.of(context).cardTheme.shadowColor,
             title: Text(title, style: textTheme.bodyLarge),
             content: Text(message, style: textTheme.bodyMedium),
             actions: [

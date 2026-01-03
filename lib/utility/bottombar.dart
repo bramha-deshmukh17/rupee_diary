@@ -23,6 +23,7 @@ class _BottomBarState extends State<BottomBar> {
   Widget build(BuildContext context) {
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
+
       notchMargin: 6,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,

@@ -45,7 +45,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       appBar: Appbar(title: 'Statistics'),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 1),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -78,6 +78,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final result = await showModalBottomSheet<StatisticsFilter>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).cardTheme.color,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -397,8 +398,6 @@ class _TopSpendingSectionState extends State<TopSpendingSection> {
     required TextTheme textTheme,
   }) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      elevation: 5,
       child: Padding(
         padding: const EdgeInsets.all(10.0),
         child: Row(
@@ -406,7 +405,7 @@ class _TopSpendingSectionState extends State<TopSpendingSection> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: kPrimaryColor.withOpacity(0.15),
+                color: kPrimaryColor.withAlpha(38),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: kPrimaryColor, size: 20),
@@ -494,7 +493,6 @@ class _CategoryExpensePieSectionState extends State<CategoryExpensePieSection> {
 
     if (_loading) {
       return const Card(
-        elevation: 10,
         child: Padding(
           padding: EdgeInsets.all(16),
           child: Center(child: CircularProgressIndicator()),
@@ -504,7 +502,6 @@ class _CategoryExpensePieSectionState extends State<CategoryExpensePieSection> {
 
     if (_data.isEmpty) {
       return Card(
-        elevation: 10,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
@@ -522,7 +519,6 @@ class _CategoryExpensePieSectionState extends State<CategoryExpensePieSection> {
 
     if (total <= 0) {
       return Card(
-        elevation: 10,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
@@ -549,7 +545,7 @@ class _CategoryExpensePieSectionState extends State<CategoryExpensePieSection> {
     });
 
     return Card(
-      elevation: 10,
+      elevation: 8,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

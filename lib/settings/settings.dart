@@ -9,6 +9,7 @@ import '../utility/appbar.dart';
 import '../utility/snack.dart';
 import 'bill_reminder.dart';
 import 'security.dart';
+import 'how_to_use.dart'; // <--- add this import
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -136,7 +137,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               activeThumbColor: kSecondaryColor,
             ),
           ),
-
           SettingsTile(
             icon: FontAwesomeIcons.fileInvoice,
             iconColor: kPrimaryColor,
@@ -175,49 +175,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           /// ABOUT
           const SectionTitle(title: "ABOUT"),
           SettingsTile(
-            icon: FontAwesomeIcons.circleQuestion,
+            icon: FontAwesomeIcons.bookOpen,
             iconColor: kPrimaryColor,
-            title: "Help & Support",
+            title: "How to use app",
             trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushNamed(context, HowToUseScreen.id);
+            },
           ),
           SettingsTile(
-            icon: FontAwesomeIcons.star,
+            icon: FontAwesomeIcons.circleQuestion,
             iconColor: kPrimaryColor,
-            title: "Rate the App",
+            title: "About us",
             trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
             onTap: () {},
-          ),
-
+          ), 
           khBox, khBox,
           Center(
             child: Text(
-              "Version 1.5.1",
+              "Version 1.5.2",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final file = await DatabaseHelper.instance.exportBackupJson();
-              showSnack('backup saved at ${file.path}', context);
-              debugPrint(file.path);
-            },
-            child: const Text('export backup'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await DatabaseHelper.instance
-                    .restoreBackupFromDefaultLocation();
-                if (!context.mounted) return;
-                showSnack('backup restored successfully', context);
-              } catch (e) {
-                if (!context.mounted) return;
-                debugPrint(e.toString());
-                showSnack('restore failed: $e', context, error: true);
-              }
-            },
-            child: const Text('restore backup'),
           ),
         ],
       ),
@@ -236,11 +214,10 @@ class SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-        ),
+        style: Theme.of(context)
+            .textTheme
+            .bodyLarge
+            ?.copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -266,17 +243,14 @@ class SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: iconColor.withOpacity(0.1),
+          backgroundColor: iconColor.withAlpha(25),
           child: Icon(icon, color: iconColor, size: 18),
         ),
         title: Text(
           title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
         ),
         trailing: trailing,
         onTap: onTap,

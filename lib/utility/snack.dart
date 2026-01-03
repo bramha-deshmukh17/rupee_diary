@@ -9,6 +9,7 @@ void showSnack(String message, BuildContext context, {bool error = false}) {
     SnackBar(
       content: Text(message, style: textTheme.bodyLarge?.copyWith(color: kWhite),),
       backgroundColor: error ? kRed : kGreen,
+      elevation: 5,
       behavior: SnackBarBehavior.floating,
       duration: Duration(seconds: error ? 3 : 2),
     ),

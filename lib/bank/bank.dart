@@ -56,100 +56,106 @@ class _BankScreenState extends State<BankScreen> {
 
   //bank page to show list of banks
   //long press to delete a bank
-  
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return Scaffold(
       appBar: Appbar(title: 'Banks'),
-      body:
-          _loading
-              ? const Center(
-                child: CircularProgressIndicator(color: kPrimaryColor),
-              )
-              : _banks.isEmpty
-              ? Center(
-                child: Text('No banks added', style: textTheme.bodyLarge),
-              )
-              : Column(
-                children: [
-                  Text(
-                    "Long press to delete bank",
-                    style: textTheme.bodySmall,
-                    textAlign: TextAlign.start,
-                  ),
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: _banks.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, i) {
-                        final b = _banks[i];
-                        final isDefault = b.isDefault ?? false;
-                        return GestureDetector(
-                          onLongPress: deleteBankDialog(context, b, _loadBanks),
-                          child: Card(
-                            elevation: 5.0,
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: kPrimaryColor,
-                                child: Text(
-                                  b.name!.isNotEmpty
-                                      ? b.name![0].toUpperCase()
-                                      : '?',
-                                  style: textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: kWhite,
+      body: Padding(
+       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 1),
+        child:
+            _loading
+                ? const Center(
+                  child: CircularProgressIndicator(color: kPrimaryColor),
+                )
+                : _banks.isEmpty
+                ? Center(
+                  child: Text('No banks added', style: textTheme.bodyLarge),
+                )
+                : Column(
+                  children: [
+                    Text(
+                      "Long press to delete bank",
+                      style: textTheme.bodySmall,
+                      textAlign: TextAlign.start,
+                    ),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: _banks.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, i) {
+                          final b = _banks[i];
+                          final isDefault = b.isDefault ?? false;
+                          return GestureDetector(
+                            onLongPress: deleteBankDialog(
+                              context,
+                              b,
+                              _loadBanks,
+                            ),
+                            child: Card(
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: kPrimaryColor,
+                                  child: Text(
+                                    b.name!.isNotEmpty
+                                        ? b.name![0].toUpperCase()
+                                        : '?',
+                                    style: textTheme.bodyLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: kWhite,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              title: Text(b.name!),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (isDefault)
+                                title: Text(b.name!),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (isDefault)
+                                      Text(
+                                        'Default',
+                                        style: textTheme.labelMedium?.copyWith(
+                                          color: kGreen,
+                                        ),
+                                      ),
                                     Text(
-                                      'Default',
-                                      style: textTheme.labelMedium?.copyWith(
-                                        color: kGreen,
+                                      '₹${b.balance!.toStringAsFixed(2)}',
+                                      style: textTheme.bodyMedium?.copyWith(
+                                        color: b.balance! >= 0 ? kGreen : kRed,
                                       ),
                                     ),
-                                  Text(
-                                    '₹${b.balance!.toStringAsFixed(2)}',
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      color: b.balance! >= 0 ? kGreen : kRed,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              //icon button to make a bank default while adding a transaction
-                              trailing: IconButton(
-                                tooltip:
-                                    isDefault
-                                        ? 'Default bank'
-                                        : 'Set as default',
-                                icon: Icon(
-                                  isDefault
-                                      ? FontAwesomeIcons.solidStar
-                                      : FontAwesomeIcons.star,
-                                  color: isDefault ? kPrimaryColor : kGrey,
-                                  size: 18,
+                                  ],
                                 ),
-                                onPressed: () async {
-                                  changeDefaultBank(b, isDefault, context);
-                                },
+                                //icon button to make a bank default while adding a transaction
+                                trailing: IconButton(
+                                  tooltip:
+                                      isDefault
+                                          ? 'Default bank'
+                                          : 'Set as default',
+                                  icon: Icon(
+                                    isDefault
+                                        ? FontAwesomeIcons.solidStar
+                                        : FontAwesomeIcons.star,
+                                    color: isDefault ? kPrimaryColor : kGrey,
+                                    size: 18,
+                                  ),
+                                  onPressed: () async {
+                                    changeDefaultBank(b, isDefault, context);
+                                  },
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+      ),
+
       //bottom app bar
       bottomNavigationBar: BottomBar(currentIndex: 3),
-      
+
       //floating action button to add bank
       floatingActionButton: FloatingActionButton(
         backgroundColor: kPrimaryColor,
@@ -169,7 +175,7 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   //delete bank dialog with conditions
-  //taking context and bank data and loadBanks function as parameters 
+  //taking context and bank data and loadBanks function as parameters
   GestureLongPressCallback deleteBankDialog(
     BuildContext context,
     BankModel b,
@@ -210,6 +216,8 @@ class _BankScreenState extends State<BankScreen> {
         context: context,
         builder:
             (context) => AlertDialog(
+              backgroundColor: Theme.of(context).cardTheme.color,
+              shadowColor: Theme.of(context).cardTheme.shadowColor,
               title: Text(
                 "Delete Bank",
                 style: Theme.of(context).textTheme.headlineMedium,
@@ -243,7 +251,11 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   //method to make a bank account default
-  void changeDefaultBank(BankModel b, bool isDefault, BuildContext context) async {
+  void changeDefaultBank(
+    BankModel b,
+    bool isDefault,
+    BuildContext context,
+  ) async {
     if (isDefault) return;
     try {
       await DatabaseHelper.instance.bankDao.setDefault(b.id!);
@@ -352,6 +364,8 @@ class _AddBankState extends State<AddBank> {
 
     return AlertDialog(
       title: Text("Enter Bank Details"),
+      backgroundColor: Theme.of(context).cardTheme.color,
+      shadowColor: Theme.of(context).cardTheme.shadowColor,
       content: SizedBox(
         height: 150.0,
         child: Column(

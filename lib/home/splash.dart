@@ -14,7 +14,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(Duration(seconds: 2), () async {
+    Timer(Duration(seconds: 1), () async {
       //here for 2 seconds a slapsh screen will be shown and it will fetch data from the db
       //the data will consist the data related to app lock if it is enabled and password is not null
       //then only it will redirect to the lock screen else directly to the homoe screen
@@ -26,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
               (s.settingsValue?.toString() ?? 'disabled') == 'enabled';
           continue;
         }
-        if(s.settingsKey == 'password' && authentication) {
+        if (s.settingsKey == 'password' && authentication) {
           final pwd = s.settingsValue?.toString() ?? '';
           if (pwd.isEmpty) {
             authentication = false; // Disable if no password set
@@ -54,9 +54,11 @@ class _SplashScreenState extends State<SplashScreen> {
             SizedBox(
               width: 300,
               height: 300,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/app_icon.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             khBox,

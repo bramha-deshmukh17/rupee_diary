@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../model/setting.dart';
@@ -48,19 +47,5 @@ class SettingDao {
   Future<List<SettingModel>> getSettings() async {
     final List<Map<String, dynamic>> maps = await db!.query('settings');
     return maps.map((map) => SettingModel.fromMap(map)).toList();
-  }
-
-  // ===========================
-  // DEBUG: PARSED SETTINGS MODELS
-  Future<void> debugPrintAllModels() async {
-    final list = await getSettings();
-    debugPrint('⚙️ ===== SETTINGS TABLE (MODELS) =====');
-    if (list.isEmpty) {
-      debugPrint('⚠️ No settings found');
-    } else {
-      for (final s in list) {
-        debugPrint('🔧 KEY: ${s.settingsKey} | VALUE: ${s.settingsValue}');
-      }
-    }
   }
 }

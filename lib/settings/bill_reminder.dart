@@ -180,12 +180,10 @@ class _BillReminderState extends State<BillReminder> {
     final textTheme = Theme.of(context).textTheme;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: kPrimaryColor.withOpacity(0.1),
+          backgroundColor: kPrimaryColor.withAlpha(25),
           child: Icon(iconData, color: kPrimaryColor, size: 18),
         ),
         title: Text(reminder.title, style: textTheme.bodyLarge),
@@ -203,6 +201,8 @@ class _BillReminderState extends State<BillReminder> {
           ],
         ),
         trailing: PopupMenuButton<String>(
+          color: Theme.of(context).cardTheme.color,
+          shadowColor: Theme.of(context).cardTheme.shadowColor,
           onSelected: (value) async {
             switch (value) {
               case 'edit':
@@ -333,6 +333,8 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
         selectedCat.id != -1 ? selectedCat.icon : Icons.category;
 
     return Dialog(
+      backgroundColor: Theme.of(context).cardTheme.color,
+      shadowColor: Theme.of(context).cardTheme.shadowColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         padding: const EdgeInsets.all(24),
