@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:rupee_diary/utility/constant.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../db/database_helper.dart';
 import '../db/model/setting.dart';
 import '../main.dart' show ThemeProvider;
@@ -147,7 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          /// APPEARANCE
+          // APPEARANCE
           const SectionTitle(title: "APPEARANCE"),
           SettingsTile(
             icon: FontAwesomeIcons.moon,
@@ -160,8 +161,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          /// Security
-          const SectionTitle(title: "SECURITY"),
+          // Security
+          const SectionTitle(title: "SECURITY & BACKUP"),
           SettingsTile(
             icon: FontAwesomeIcons.lock,
             iconColor: kPrimaryColor,
@@ -172,8 +173,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          /// ABOUT
-          const SectionTitle(title: "ABOUT"),
+          //data backup and retore
+          SettingsTile(
+            icon: FontAwesomeIcons.download,
+            iconColor: kPrimaryColor,
+            title: "Backup Data",
+            onTap: () async {
+              try {
+                final password = await showPasswordSheet(
+                  context: context,
+                  title: "Create Encrypted Backup",
+                  actionText: "Backup",
+                  confirmPassword: true,
+                );
+
+                if (password == null || !mounted) return;
+
+                final success = await DatabaseHelper.instance
+                    .exportEncryptedBackup(password);
+
+                if (!mounted) return;
+                showSnack(
+                  success
+                      ? "Encrypted backup created successfully"
+                      : "Backup failed",
+                  context,
+                  error: !success,
+                );
+              } catch (e) {
+                showSnack("Backup failed", context, error: true);
+              }
+            },
+          ),
+
+          SettingsTile(
+            icon: FontAwesomeIcons.upload,
+            iconColor: kPrimaryColor,
+            title: "Restore Data",
+            onTap: () async {
+              try {
+                final password = await showPasswordSheet(
+                  context: context,
+                  title: "Restore Backup",
+                  actionText: "Restore",
+                  showWarning: true,
+                );
+
+                if (password == null || !mounted) return;
+
+                final success = await DatabaseHelper.instance
+                    .restoreEncryptedBackup(password);
+
+                if (!mounted) return;
+                showSnack(
+                  success
+                      ? "Data restored successfully"
+                      : "Restore failed (wrong password or invalid backup)",
+                  context,
+                  error: !success,
+                );
+              } catch (e) {
+                showSnack("Restore failed", context, error: true);
+              }
+            },
+          ),
+
+          // Other
+          const SectionTitle(title: "OTHER"),
           SettingsTile(
             icon: FontAwesomeIcons.bookOpen,
             iconColor: kPrimaryColor,
@@ -186,14 +252,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SettingsTile(
             icon: FontAwesomeIcons.circleQuestion,
             iconColor: kPrimaryColor,
-            title: "About us",
+            title: "Privacy Policy",
             trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
-            onTap: () {},
-          ), 
+            onTap: () => openPrivacyPolicy(context),
+          ),
           khBox, khBox,
           Center(
             child: Text(
-              "Version 1.5.2",
+              "Version 1.5.3",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
           ),
@@ -201,9 +267,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
+  //open privacy policy url
+  Future<void> openPrivacyPolicy(BuildContext context) async {
+    final uri = Uri.parse("https://bramhadeshmukh.me/privacy/rupeediary");
+
+    final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!success) {
+      showSnack("Unable to open Privacy Policy", context, error: true);
+    }
+  }
+
+  //password dialog sheet
+  Future<String?> showPasswordSheet({
+    required BuildContext context,
+    required String title,
+    required String actionText,
+    bool confirmPassword = false,
+    bool showWarning = false,
+  }) async {
+    final passwordCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 20,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+
+                if (showWarning)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      "⚠️ Restoring will overwrite all existing data.",
+                      style: TextStyle(color: kRed),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: passwordCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: "Password",
+                    border: OutlineInputBorder(),
+                  ),
+                  validator:
+                      (v) =>
+                          v == null || v.length < 6 ? "Min 6 characters" : null,
+                ),
+
+                if (confirmPassword) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: confirmCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: "Confirm Password",
+                      border: OutlineInputBorder(),
+                    ),
+                    validator:
+                        (v) =>
+                            v != passwordCtrl.text
+                                ? "Passwords do not match"
+                                : null,
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState!.validate()) {
+                      Navigator.pop(ctx, passwordCtrl.text);
+                    }
+                  },
+                  child: Text(actionText),
+                ),
+
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
-/// Section title
+// Section title
 class SectionTitle extends StatelessWidget {
   final String title;
   const SectionTitle({super.key, required this.title});
@@ -214,16 +390,15 @@ class SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Text(
         title,
-        style: Theme.of(context)
-            .textTheme
-            .bodyLarge
-            ?.copyWith(fontWeight: FontWeight.bold),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }
 }
 
-/// Reusable settings tile
+// Reusable settings tile
 class SettingsTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -250,7 +425,9 @@ class SettingsTile extends StatelessWidget {
         ),
         title: Text(
           title,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
         ),
         trailing: trailing,
         onTap: onTap,

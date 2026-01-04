@@ -77,6 +77,7 @@ class MyApp extends StatelessWidget {
       // 1. Your existing light theme
       theme: ThemeData(
         brightness: Brightness.light,
+
         cardTheme: CardThemeData(
           color: kWhite,
           shadowColor: const Color.fromARGB(255, 22, 21, 21),
@@ -87,11 +88,36 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.all(Radius.circular(16)),
           ),
         ),
+
+         textSelectionTheme: TextSelectionThemeData(
+          cursorColor: kSecondaryColor,
+          selectionColor: kSecondaryColor.withAlpha(128),
+          selectionHandleColor: kSecondaryColor,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          labelStyle: const TextStyle(color: kGrey),
+          floatingLabelStyle: const TextStyle(color: kSecondaryColor),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: kGrey),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: kGrey),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: kSecondaryColor, width: 2.0),
+          ),
+        ),
+
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: kWhite,
         textTheme: poppinsTextTheme(Brightness.light),
         appBarTheme: const AppBarTheme(backgroundColor: kWhite),
-        bottomAppBarTheme: const BottomAppBarThemeData(color: Color.fromARGB(255, 245, 245, 245)),
+        bottomAppBarTheme: const BottomAppBarThemeData(
+          color: Color.fromARGB(255, 245, 245, 245),
+        ),
       ),
 
       // 2. Add the dark theme
@@ -107,11 +133,36 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.all(Radius.circular(16)),
           ),
         ),
+
+         textSelectionTheme: TextSelectionThemeData(
+          cursorColor: kSecondaryColor,
+          selectionColor: kSecondaryColor.withAlpha(128),
+          selectionHandleColor: kSecondaryColor,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          labelStyle: const TextStyle(color: kGrey),
+          floatingLabelStyle: const TextStyle(color: kSecondaryColor),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: kGrey),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: kGrey),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: kSecondaryColor, width: 2.0),
+          ),
+        ),
+
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: kBlack,
         textTheme: poppinsTextTheme(Brightness.dark),
         appBarTheme: const AppBarTheme(backgroundColor: kBlack),
-        bottomAppBarTheme: const BottomAppBarThemeData(color: Color.fromARGB(255, 18, 18, 18),),
+        bottomAppBarTheme: const BottomAppBarThemeData(
+          color: Color.fromARGB(255, 18, 18, 18),
+        ),
       ),
 
       // 3Set the themeMode to follow the system

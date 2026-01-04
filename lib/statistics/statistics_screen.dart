@@ -223,7 +223,7 @@ class _FilterSheetState extends State<FilterSheet> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<DateTime?>(
-            value: _selectedMonthStart,
+            initialValue: _selectedMonthStart,
             isExpanded: true,
             decoration: kBaseInputDecoration.copyWith(
               labelText: 'Select month',
@@ -588,7 +588,7 @@ class _CategoryExpensePieSectionState extends State<CategoryExpensePieSection> {
                                   ' ${s.percent.toStringAsFixed(0)}%', // label on slice
                               radius: 70,
                               titleStyle: textTheme.bodySmall?.copyWith(
-                                color: Colors.white,
+                                color: kWhite,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

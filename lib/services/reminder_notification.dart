@@ -101,19 +101,6 @@ class ReminderNotificationService {
         'ReminderNotificationService: permission (notification) error: $e',
       );
     }
-
-    try {
-      if (await Permission.scheduleExactAlarm.isDenied) {
-        final status = await Permission.scheduleExactAlarm.request();
-        if (!status.isGranted && context != null) {
-          showSnack('Exact alarm permission denied', context, error: true);
-        }
-      }
-    } catch (e) {
-      debugPrint(
-        'ReminderNotificationService: permission (exact alarm) error: $e',
-      );
-    }
   }
 
   /// Handle notification action taps (mark paid / dismiss).

@@ -357,7 +357,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                   onFieldSubmitted: (val) {
                     FocusScope.of(context).requestFocus(_amountFocusNode);
                   },
-                  decoration: kBaseOutlineDecoration.copyWith(
+                  decoration: InputDecoration(
                     labelText: 'Bill Title*',
                   ),
                   style: textTheme.bodyLarge,
@@ -377,7 +377,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                   onFieldSubmitted: (val) {
                     FocusScope.of(context).requestFocus(_categoryNode);
                   },
-                  decoration: kBaseOutlineDecoration.copyWith(
+                  decoration: InputDecoration(
                     labelText: 'Amount*',
                     prefixText: '₹',
                   ),
@@ -398,7 +398,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                   style: textTheme.bodyLarge,
                   initialValue: _selectedCategory,
                   focusNode: _categoryNode,
-                  decoration: kBaseOutlineDecoration.copyWith(
+                  decoration: InputDecoration(
                     labelText: 'Category',
                     // use icon from db category instead of constant.dart
                     prefixIcon: Icon(categoryIcon),
@@ -470,6 +470,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                   ),
                   value: _isRecurring,
                   checkColor: kSecondaryColor,
+                  fillColor: MaterialStateProperty.all(kSecondaryColor.withAlpha(128)),
                   onChanged: (value) {
                     setState(() {
                       _isRecurring = value!;
@@ -482,7 +483,7 @@ class _AddEditReminderDialogState extends State<AddEditReminderDialog> {
                 TextFormField(
                   controller: _notesController,
                   focusNode: _notesFocusNode,
-                  decoration: kBaseOutlineDecoration.copyWith(
+                  decoration: InputDecoration(
                     labelText: 'Notes (Optional)',
                   ),
                   style: textTheme.bodyLarge,

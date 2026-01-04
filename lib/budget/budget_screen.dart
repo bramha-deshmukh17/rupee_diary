@@ -230,7 +230,7 @@ class _AddBudgetDialogState extends State<AddBudgetDialog> {
                   onPressed: add,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimaryColor,
-                    foregroundColor: Colors.white,
+                    foregroundColor: kWhite,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),

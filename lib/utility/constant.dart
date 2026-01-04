@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-const Color kPrimaryColor = Color(0xFFFF7043);
-const Color kSecondaryColor = Color(0xFF6A1B9A);
-const Color kOutline = Color(0xFF540F84);
+const Color kPrimaryColor = Color(0xFF10B981);
+const Color kSecondaryColor =  Color.fromARGB(255, 68, 196, 153);
 
 const Color kWhite = Colors.white;
 const Color kBlack = Colors.black;
@@ -30,19 +29,5 @@ const kFocusedOutlineBorder = UnderlineInputBorder(
 const kBaseInputDecoration = InputDecoration(
   border: kOutlineBorder,
   focusedBorder: kFocusedOutlineBorder,
-);
-
-// OutlineInputBorder
-const kOutlineInputBorder = OutlineInputBorder(
-  borderSide: BorderSide(color: kSecondaryColor),
-  borderRadius: BorderRadius.all(Radius.circular(8.0)),
-);
-const kFocusedOutlineInputBorder = OutlineInputBorder(
-  borderSide: BorderSide(color: kSecondaryColor, width: 2),
-  borderRadius: BorderRadius.all(Radius.circular(8.0)),
-);
-
-final kBaseOutlineDecoration = InputDecoration(
-  border: kOutlineInputBorder,
-  focusedBorder: kFocusedOutlineInputBorder,
+  enabledBorder: kOutlineBorder,
 );

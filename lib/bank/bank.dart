@@ -371,7 +371,7 @@ class _AddBankState extends State<AddBank> {
         child: Column(
           children: [
             TextField(
-              decoration: kBaseOutlineDecoration.copyWith(
+              decoration: InputDecoration(
                 labelText: 'Bank Name',
                 errorText: _errorName,
               ),
@@ -382,7 +382,7 @@ class _AddBankState extends State<AddBank> {
             ),
             khBox,
             TextField(
-              decoration: kBaseOutlineDecoration.copyWith(
+              decoration: InputDecoration(
                 labelText: 'Initial Balance',
                 errorText: _errorBalance,
               ),
