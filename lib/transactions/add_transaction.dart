@@ -434,7 +434,7 @@ class _AddTransactionState extends State<AddTransaction> {
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kPrimaryColor,
-                  foregroundColor: Colors.white,
+                  foregroundColor: kWhite,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),

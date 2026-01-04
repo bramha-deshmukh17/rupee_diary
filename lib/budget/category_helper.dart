@@ -273,7 +273,7 @@ class EditBudget extends StatelessWidget {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimaryColor,
-                foregroundColor: Colors.white,
+                foregroundColor: kWhite,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -342,7 +342,7 @@ class DeleteBudgetDialog extends StatelessWidget {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimaryColor,
-                foregroundColor: Colors.white,
+                foregroundColor: kWhite,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
