@@ -215,9 +215,12 @@ class BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           // Display dynamic Balance
-          Text(
-            "₹${balance.toStringAsFixed(2)}",
-            style: textTheme.headlineMedium?.copyWith(color: kWhite),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text(
+              "₹${balance.toStringAsFixed(2)}",
+              style: textTheme.headlineMedium?.copyWith(color: kWhite),
+            ),
           ),
           khBox,
           Text(
@@ -236,9 +239,12 @@ class BalanceCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   // Display dynamic Income
-                  Text(
-                    "Income\n₹${income.toStringAsFixed(2)}",
-                    style: textTheme.bodyMedium?.copyWith(color: kWhite),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                      "Income\n₹${income.toStringAsFixed(2)}",
+                      style: textTheme.bodyMedium?.copyWith(color: kWhite),
+                    ),
                   ),
                 ],
               ),
@@ -251,9 +257,12 @@ class BalanceCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   // Display dynamic Expense
-                  Text(
-                    "Expenses\n₹${expense.toStringAsFixed(2)}",
-                    style: textTheme.bodyMedium?.copyWith(color: kWhite),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                      "Expenses\n₹${expense.toStringAsFixed(2)}",
+                      style: textTheme.bodyMedium?.copyWith(color: kWhite),
+                    ),
                   ),
                 ],
               ),
@@ -369,12 +378,20 @@ class TransactionTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text('$bankName ', style: textTheme.bodyLarge),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Text(bankName, style: textTheme.bodyLarge),
+                    ),
+                  ),
                   if (notes != null && notes.isNotEmpty)
-                    Icon(
-                      FontAwesomeIcons.solidMessage,
-                      size: 10,
-                      color: textTheme.bodySmall?.color,
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Icon(
+                        FontAwesomeIcons.solidMessage,
+                        size: 10,
+                        color: textTheme.bodySmall?.color,
+                      ),
                     ),
                 ],
               ),
@@ -385,24 +402,28 @@ class TransactionTile extends StatelessWidget {
               ),
             ],
           ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                (type == 'income' || type == 'borrow')
-                    ? '+₹${amount.toStringAsFixed(2)}'
-                    : '-₹${amount.toStringAsFixed(2)}',
-                style: textTheme.bodyLarge?.copyWith(
-                  color: colorFor,
-                  fontWeight: FontWeight.bold,
+          trailing: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.3,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Text(
+                    (type == 'income' || type == 'borrow')
+                        ? '+₹${amount.toStringAsFixed(2)}'
+                        : '-₹${amount.toStringAsFixed(2)}',
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: colorFor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              // If your model has a balance field, use it here.
-              // Otherwise, you might want to hide this Text widget.
-              Text(balance.toStringAsFixed(2), style: textTheme.bodySmall),
-            ],
+                const SizedBox(height: 4),
+                Text(balance.toStringAsFixed(2), style: textTheme.bodySmall),
+              ],
+            ),
           ),
         ),
       ),
@@ -426,17 +447,17 @@ class TransactionTile extends StatelessWidget {
           return AlertDialog(
             backgroundColor: Theme.of(context).cardTheme.color,
             shadowColor: Theme.of(context).cardTheme.shadowColor,
-            title: Text(title, style: textTheme.bodyLarge),
+            title: Text(
+              title,
+              style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
+            ),
             content: Text(message, style: textTheme.bodyMedium),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: Text(
-                  'Close',
-                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
-                ),
+                child: Text('Close', style: textTheme.bodyLarge),
               ),
             ],
           );

@@ -184,7 +184,7 @@ class _BudgetVsIncomeExpenseLineSectionState
                         getTitlesWidget: (value, meta) {
                           if (value < 0) return const SizedBox.shrink();
                           return Text(
-                            value.toStringAsFixed(0),
+                            _abbreviateNumber(value),
                             style: textTheme.bodySmall,
                           );
                         },
@@ -204,7 +204,7 @@ class _BudgetVsIncomeExpenseLineSectionState
                         _points.length,
                         (i) => FlSpot(i.toDouble(), _points[i].budget),
                       ),
-                      color: kPrimaryColor,
+                      color: Colors.cyan,
                       barWidth: 3,
                       dotData: const FlDotData(show: false),
                     ),
@@ -236,7 +236,7 @@ class _BudgetVsIncomeExpenseLineSectionState
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _legendDot(color: kPrimaryColor),
+                _legendDot(color: Colors.cyan),
                 const SizedBox(width: 4),
                 Text('Budget', style: textTheme.bodySmall),
                 kwBox,
@@ -253,6 +253,19 @@ class _BudgetVsIncomeExpenseLineSectionState
         ),
       ),
     );
+  }
+
+  //helper function for larger numbers abbreviation
+  String _abbreviateNumber(num value) {
+    if (value >= 10000000) {
+      return '${(value / 10000000).toStringAsFixed(1)}Cr';
+    } else if (value >= 100000) {
+      return '${(value / 100000).toStringAsFixed(1)}L';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}k';
+    } else {
+      return value.toStringAsFixed(0);
+    }
   }
 
   Widget _legendDot({required Color color}) {

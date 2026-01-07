@@ -196,6 +196,7 @@ class TransactionTile extends StatelessWidget {
                 ? _markAsReturnedDialog(textTheme: textTheme, context: context)
                 : null,
         contentPadding: const EdgeInsets.all(10.0),
+
         leading: GestureDetector(
           onTap: showMyDialog(
             'Category',
@@ -208,24 +209,29 @@ class TransactionTile extends StatelessWidget {
             child: Icon(iconData, size: 15, color: kWhite),
           ),
         ),
+
         title: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(transaction.bankName, style: textTheme.bodyLarge),
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.3,
+                  child:SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child:  Text(transaction.bankName, style: textTheme.bodyLarge),),
+                ),
+
                 if (transaction.notes != null && transaction.notes!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: Icon(
-                      FontAwesomeIcons.solidMessage,
-                      size: 10,
-                      color: textTheme.bodySmall?.color,
-                    ),
+                  Icon(
+                    FontAwesomeIcons.solidMessage,
+                    size: 10,
+                    color: textTheme.bodySmall?.color,
                   ),
               ],
             ),
+
             const SizedBox(height: 4),
             Text(
               DateFormat('dd/MM/yyyy • hh:mm:ss').format(transaction.date),
@@ -233,25 +239,32 @@ class TransactionTile extends StatelessWidget {
             ),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              type == 'income' || type == 'borrow'
-                  ? '+₹${transaction.amount.toStringAsFixed(2)}'
-                  : '-₹${transaction.amount.toStringAsFixed(2)}',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorFor,
-                fontWeight: FontWeight.bold,
+
+        trailing: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.3,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Text(
+                  type == 'income' || type == 'borrow'
+                      ? '+₹${transaction.amount.toStringAsFixed(2)}'
+                      : '-₹${transaction.amount.toStringAsFixed(2)}',
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: colorFor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '₹${transaction.balance.toStringAsFixed(2)}',
-              style: textTheme.bodySmall,
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                '₹${transaction.balance.toStringAsFixed(2)}',
+                style: textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -530,7 +543,7 @@ class _FilterSheetState extends State<FilterSheet> {
     super.dispose();
   }
 
-    Future<void> _pickRange() async {
+  Future<void> _pickRange() async {
     final now = DateTime.now();
     final firstDate = DateTime(now.year - 5);
     final lastDate = DateTime(now.year + 5);
@@ -553,7 +566,7 @@ class _FilterSheetState extends State<FilterSheet> {
   }
 
   //load bank data for bank filter dropdown
-    Future<void> _loadBanks() async {
+  Future<void> _loadBanks() async {
     try {
       final banks = await DatabaseHelper.instance.bankDao.getBanks();
       setState(() {
@@ -591,12 +604,11 @@ class _FilterSheetState extends State<FilterSheet> {
   }
 
   //date range picker helper to get data within selected range
-    void _apply() {
+  void _apply() {
     final min = double.tryParse(_minCtrl.text.trim());
     final max = double.tryParse(_maxCtrl.text.trim());
     final categoryId = _selCategory == kAll ? null : int.tryParse(_selCategory);
-    final bankId =
-        _selBank == kAll ? null : int.tryParse(_selBank);
+    final bankId = _selBank == kAll ? null : int.tryParse(_selBank);
 
     final result = TransactionFilter(
       type: _f.type,
@@ -621,7 +633,7 @@ class _FilterSheetState extends State<FilterSheet> {
       _selBank = kAll;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -654,8 +666,16 @@ class _FilterSheetState extends State<FilterSheet> {
                   _types.map((t) {
                     final isSelected = _f.type == t.toLowerCase();
                     return ChoiceChip(
-                      label: Text(t),
+                      selectedColor: kSecondaryColor,
+                      backgroundColor: Theme.of(context).cardTheme.color,
+                      label: Text(
+                        t,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : null,
+                        ),
+                      ),
                       selected: isSelected,
+                      checkmarkColor: isSelected ? Colors.white : null,
                       onSelected: (sel) {
                         setState(() {
                           _f = _f.copyWith(type: sel ? t.toLowerCase() : null);
@@ -695,8 +715,14 @@ class _FilterSheetState extends State<FilterSheet> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _pickRange,
-                    icon: const Icon(FontAwesomeIcons.calendar),
-                    label: Text(dateLabel),
+                    icon: Icon(
+                      FontAwesomeIcons.calendar,
+                      color:
+                          Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
+                    ),
+                    label: Text(dateLabel, style: textTheme.bodyLarge),
                   ),
                 ),
               ],
@@ -756,7 +782,7 @@ class _FilterSheetState extends State<FilterSheet> {
               children: [
                 TextButton(
                   onPressed: _clearAll,
-                  child: const Text('Clear All'),
+                  child: Text('Clear All', style: textTheme.bodyLarge),
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton(
@@ -765,7 +791,10 @@ class _FilterSheetState extends State<FilterSheet> {
                     backgroundColor: kPrimaryColor,
                     foregroundColor: kWhite,
                   ),
-                  child: const Text('Apply Filters'),
+                  child: Text(
+                    'Apply Filters',
+                    style: textTheme.bodyLarge?.copyWith(color: kWhite),
+                  ),
                 ),
               ],
             ),

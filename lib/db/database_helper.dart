@@ -74,7 +74,7 @@ class DatabaseHelper {
     _db = db;
   }
 
-  /// Get DB file
+  // Get DB file
   Future<File> _getDbFile() async {
     final dbPath = await getDatabasesPath();
     return File(p.join(dbPath, 'rupeediary.db'));
@@ -135,7 +135,11 @@ class DatabaseHelper {
       try {
         await _reopenDatabase();
       } catch (e) {
-        showSnack("Failed to open reopen db", p.context as BuildContext, error: true);
+        showSnack(
+          "Failed to open reopen db",
+          p.context as BuildContext,
+          error: true,
+        );
         showSnack("Re-open app now", p.context as BuildContext);
       }
     }
@@ -262,9 +266,25 @@ class DatabaseHelper {
       try {
         await _reopenDatabase();
       } catch (e) {
-        showSnack("Failed to open reopen db", p.context as BuildContext, error: true);
+        showSnack(
+          "Failed to open reopen db",
+          p.context as BuildContext,
+          error: true,
+        );
         showSnack("Re-open app now", p.context as BuildContext);
       }
     }
+  }
+
+  Future<void> clearAllData() async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      // Order matters because of foreign keys
+      await txn.delete('transactions');
+      await txn.delete('bill_reminders');
+      await txn.delete('budget');
+      await txn.delete('bank');
+    });
   }
 }

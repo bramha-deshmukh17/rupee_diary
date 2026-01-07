@@ -9,7 +9,8 @@ import '../main.dart' show ThemeProvider;
 import '../utility/appbar.dart';
 import '../utility/snack.dart';
 import 'bill_reminder.dart';
-import 'security.dart';
+import 'data_screen.dart';
+import 'security/security.dart';
 import 'how_to_use.dart'; // <--- add this import
 
 class SettingsScreen extends StatefulWidget {
@@ -136,6 +137,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _handleToggle('notifications', val);
               },
               activeThumbColor: kSecondaryColor,
+              inactiveThumbColor: Colors.grey,
+              trackOutlineColor: WidgetStatePropertyAll<Color?>(
+                kGrey.withAlpha(100),
+              ),
             ),
           ),
           SettingsTile(
@@ -158,11 +163,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: isDarkMode,
               onChanged: (val) => {_handleToggle('theme', val)},
               activeThumbColor: kSecondaryColor,
+              inactiveThumbColor: Colors.grey,
+              trackOutlineColor: WidgetStatePropertyAll<Color?>(
+                kGrey.withAlpha(100),
+              ),
             ),
           ),
 
           // Security
-          const SectionTitle(title: "SECURITY & BACKUP"),
+          const SectionTitle(title: "SECURITY"),
           SettingsTile(
             icon: FontAwesomeIcons.lock,
             iconColor: kPrimaryColor,
@@ -173,68 +182,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          //data backup and retore
+          // Data Control
+          const SectionTitle(title: "DATA & BACKUP"),
           SettingsTile(
-            icon: FontAwesomeIcons.download,
+            icon: FontAwesomeIcons.database,
             iconColor: kPrimaryColor,
-            title: "Backup Data",
-            onTap: () async {
-              try {
-                final password = await showPasswordSheet(
-                  context: context,
-                  title: "Create Encrypted Backup",
-                  actionText: "Backup",
-                  confirmPassword: true,
-                );
-
-                if (password == null || !mounted) return;
-
-                final success = await DatabaseHelper.instance
-                    .exportEncryptedBackup(password);
-
-                if (!mounted) return;
-                showSnack(
-                  success
-                      ? "Encrypted backup created successfully"
-                      : "Backup failed",
-                  context,
-                  error: !success,
-                );
-              } catch (e) {
-                showSnack("Backup failed", context, error: true);
-              }
-            },
-          ),
-
-          SettingsTile(
-            icon: FontAwesomeIcons.upload,
-            iconColor: kPrimaryColor,
-            title: "Restore Data",
-            onTap: () async {
-              try {
-                final password = await showPasswordSheet(
-                  context: context,
-                  title: "Restore Backup",
-                  actionText: "Restore",
-                  showWarning: true,
-                );
-
-                if (password == null || !mounted) return;
-
-                final success = await DatabaseHelper.instance
-                    .restoreEncryptedBackup(password);
-
-                if (!mounted) return;
-                showSnack(
-                  success
-                      ? "Data restored successfully"
-                      : "Restore failed (wrong password or invalid backup)",
-                  context,
-                  error: !success,
-                );
-              } catch (e) {
-                showSnack("Restore failed", context, error: true);
-              }
+            title: "Backup, export & clear data",
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
+            onTap: () {
+              Navigator.pushNamed(context, DataScreen.id);
             },
           ),
 
@@ -254,12 +210,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             iconColor: kPrimaryColor,
             title: "Privacy Policy",
             trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
-            onTap: () => openPrivacyPolicy(context),
+            onTap:
+                () => openURL(
+                  context,
+                  "https://bramhadeshmukh.me/privacy/rupeediary",
+                ),
+          ),
+          SettingsTile(
+            icon: FontAwesomeIcons.star,
+            iconColor: kPrimaryColor,
+            title: "Rate Us",
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
+            onTap:
+                () => openURL(
+                  context,
+                  "https://play.google.com/store/apps/details?id=com.bramhaslab.rupeediary",
+                ),
           ),
           khBox, khBox,
           Center(
             child: Text(
-              "Version 1.5.3",
+              "Version 1.5.5",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
           ),
@@ -268,114 +239,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  //open privacy policy url
-  Future<void> openPrivacyPolicy(BuildContext context) async {
-    final uri = Uri.parse("https://bramhadeshmukh.me/privacy/rupeediary");
+  //open url
+  Future<void> openURL(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
 
     final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
 
     if (!success) {
-      showSnack("Unable to open Privacy Policy", context, error: true);
+      showSnack("Unable to open URL", context, error: true);
     }
-  }
-
-  //password dialog sheet
-  Future<String?> showPasswordSheet({
-    required BuildContext context,
-    required String title,
-    required String actionText,
-    bool confirmPassword = false,
-    bool showWarning = false,
-  }) async {
-    final passwordCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    return showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 20,
-          ),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(ctx).textTheme.titleLarge,
-                  textAlign: TextAlign.center,
-                ),
-
-                if (showWarning)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      "⚠️ Restoring will overwrite all existing data.",
-                      style: TextStyle(color: kRed),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: passwordCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: "Password",
-                    border: OutlineInputBorder(),
-                  ),
-                  validator:
-                      (v) =>
-                          v == null || v.length < 6 ? "Min 6 characters" : null,
-                ),
-
-                if (confirmPassword) ...[
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: confirmCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: "Confirm Password",
-                      border: OutlineInputBorder(),
-                    ),
-                    validator:
-                        (v) =>
-                            v != passwordCtrl.text
-                                ? "Passwords do not match"
-                                : null,
-                  ),
-                ],
-
-                const SizedBox(height: 20),
-
-                ElevatedButton(
-                  onPressed: () {
-                    if (formKey.currentState!.validate()) {
-                      Navigator.pop(ctx, passwordCtrl.text);
-                    }
-                  },
-                  child: Text(actionText),
-                ),
-
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 

@@ -37,6 +37,9 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
         title,
         style: textTheme.headlineMedium,
         textAlign: TextAlign.center,
+        maxLines: 1,
+    softWrap: false,
+    overflow: TextOverflow.visible,
       ),
 
       centerTitle: true,

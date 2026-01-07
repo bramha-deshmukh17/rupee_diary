@@ -36,7 +36,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   @override
   void initState() {
     super.initState();
-    _filter = const StatisticsFilter(from: null, to: null);
+    _filter = StatisticsFilter(
+      from: DateTime(DateTime.now().year, DateTime.now().month, 1),
+      to: DateTime.now(),
+    );
   }
 
   @override
@@ -236,7 +239,10 @@ class _FilterSheetState extends State<FilterSheet> {
               ..._monthOptions.map(
                 (m) => DropdownMenuItem<DateTime?>(
                   value: m,
-                  child: Text(DateFormat('MMM yyyy').format(m)),
+                  child: Text(
+                    DateFormat('MMM yyyy').format(m),
+                    style: textTheme.bodyLarge,
+                  ),
                 ),
               ),
             ],
@@ -255,8 +261,14 @@ class _FilterSheetState extends State<FilterSheet> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _pickRange,
-                  icon: const Icon(FontAwesomeIcons.calendar),
-                  label: Text(dateLabel),
+                  icon: Icon(
+                    FontAwesomeIcons.calendar,
+                    color:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                  ),
+                  label: Text(dateLabel, style: textTheme.bodyLarge),
                 ),
               ),
             ],
@@ -283,7 +295,9 @@ class _FilterSheetState extends State<FilterSheet> {
                 ),
                 child: Text(
                   'Apply Filters',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(color: kWhite),
                 ),
               ),
             ],
@@ -355,9 +369,12 @@ class _TopSpendingSectionState extends State<TopSpendingSection> {
         if (_loading)
           const Center(child: CircularProgressIndicator())
         else if (topSpendingList.isEmpty)
-          Text(
-            'No expense data for given period',
-            style: textTheme.bodyMedium,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text(
+              'No expense data for given period',
+              style: textTheme.bodyMedium,
+            ),
           )
         else
           ListView.builder(
@@ -419,10 +436,12 @@ class _TopSpendingSectionState extends State<TopSpendingSection> {
                 ),
               ),
             ),
-            Text(
+            SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Text(
               '₹${spent.toStringAsFixed(2)}',
               style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
+            ),),
           ],
         ),
       ),

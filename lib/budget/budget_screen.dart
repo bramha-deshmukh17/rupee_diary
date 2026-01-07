@@ -33,7 +33,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   void loadBudgets() async {
     // Load budgets from the database
-    budgets = await DatabaseHelper.instance.budgetDao.getAllBudgetsOfTheMonth(DateTime.now().year, DateTime.now().month);
+    budgets = await DatabaseHelper.instance.budgetDao.getAllBudgetsOfTheMonth(
+      DateTime.now().year,
+      DateTime.now().month,
+    );
 
     // Calculate the monthly budget total
     double total = 0;
@@ -144,7 +147,7 @@ class _AddBudgetDialogState extends State<AddBudgetDialog> {
     formatIndianCurrencyInput(_textEditingController, value);
   }
 
-    void add() async {
+  void add() async {
     try {
       final now = DateTime.now();
       await DatabaseHelper.instance.budgetDao.insertBudget(
@@ -265,13 +268,13 @@ class MonthlyBudgetSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        boxShadow:[
-                BoxShadow(
-                  color: Theme.of(context).cardTheme.shadowColor!,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).cardTheme.shadowColor!,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
         borderRadius: BorderRadius.circular(16),
         gradient: const LinearGradient(
           colors: [kPrimaryColor, kSecondaryColor],
@@ -299,30 +302,37 @@ class MonthlyBudgetSection extends StatelessWidget {
             ],
           ),
           khBox,
-          Text(
-            "₹${totalExpense.toStringAsFixed(2)}",
-            style: textTheme.displayLarge?.copyWith(
-              fontSize: 50.0,
-              fontWeight: FontWeight.bold,
-              shadows: [
-                Shadow(
-                  color: kBlack.withAlpha(77),
-                  offset: const Offset(0, 4),
-                  blurRadius: 4,
-                ),
-              ],
-              color: totalExpense > budget ? kRed : kWhite,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text(
+              "₹${totalExpense.toStringAsFixed(2)}",
+              style: textTheme.displayLarge?.copyWith(
+                fontSize: 50.0,
+                fontWeight: FontWeight.bold,
+                overflow: TextOverflow.ellipsis,
+                shadows: [
+                  Shadow(
+                    color: kBlack.withAlpha(77),
+                    offset: const Offset(0, 4),
+                    blurRadius: 4,
+                  ),
+                ],
+                color: totalExpense > budget ? kRed : kWhite,
+              ),
             ),
           ),
-          Text(
-            "of ₹${budget.toStringAsFixed(2)} spent",
-            style: textTheme.bodyLarge?.copyWith(color: kWhite),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text(
+              "of ₹${budget.toStringAsFixed(2)} spent",
+              style: textTheme.bodyLarge?.copyWith(color: kWhite),
+            ),
           ),
           khBox,
           ClipRRect(
             borderRadius: const BorderRadius.all(Radius.circular(50.0)),
             child: LinearProgressIndicator(
-              value: 0.5, 
+              value: 0.5,
               valueColor: const AlwaysStoppedAnimation<Color>(kWhite),
               backgroundColor: kWhite.withAlpha(77),
               minHeight: 10,

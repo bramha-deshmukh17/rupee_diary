@@ -280,60 +280,15 @@ class TransactionsDao {
     return result;
   }
 
-  //top 3 spending category for stats
-  Future<List<Map<String, dynamic>>> getTopSpendingCategory() async {
-    final rows = await database.rawQuery(''' 
-      select 
-        sum(t.amount) as totalSpending,
-        c.id,
-        c.name as category,
-        c.icon_code_point,
-        c.icon_font_family,
-        c.icon_font_package
-      from transactions t
-      join categories c on t.categoryId = c.id
-      where date(t.date) >= date('now', '-30 days', 'localtime')
-        and t.type = 'expense'
-        and t.categoryId is not null
-      group by 
-        c.id,
-        c.name,
-        c.icon_code_point,
-        c.icon_font_family,
-        c.icon_font_package
-      order by totalSpending desc
-      limit 3
-      ''');
-    return rows;
-  }
-
-  //fetch statistics data based on filter
-  Future<dynamic> getStatistics(StatisticsFilter filter) async {}
-
-  //last 5 month transaction data for stats
-  Future<List<Map<String, Object?>>> getLastFiveMonthsExpense() async {
-    final rows = await database.rawQuery('''
-      select
-        date(date, 'start of month', 'localtime') as monthStart,
-        sum(amount) as totalExpense
-      from transactions
-      where type = 'expense'
-        and date(date) >= date('now', 'start of month', '-4 months', 'localtime')
-      group by monthStart
-      order by monthStart
-    ''');
-    return rows;
-  }
-
-
-  void _applyStatsDateAndBankFilter(
+  // helper to apply date & bank filter for stats queries
+  void _applyStatsDateFilter(
     StatisticsFilter filter,
     List<String> where,
     List<Object?> args, {
     String tableAlias = 't',
   }) {
     // Only date range now.
-    // If from & to set -> use that; else -> last 30 days.
+    // If from & to set -> use that; else -> this month
     if (filter.from != null && filter.to != null) {
       where.add('$tableAlias.date >= ?');
       where.add('$tableAlias.date <= ?');
@@ -342,17 +297,20 @@ class TransactionsDao {
       return;
     }
 
-    // default: last 30 days
-    where.add("date($tableAlias.date) >= date('now', '-30 days', 'localtime')");
+    // default: this month
+    where.add(
+      "date($tableAlias.date) >= date('now', 'start of month', 'localtime')",
+    );
   }
-  // top 3 spending categories, filtered by date/bank
+
+  // top 3 spending categories, filtered by date
   Future<List<Map<String, dynamic>>> getTopSpendingCategoryForStats(
     StatisticsFilter filter,
   ) async {
     final where = <String>["t.type = 'expense'", 't.categoryId is not null'];
     final args = <Object?>[];
 
-    _applyStatsDateAndBankFilter(filter, where, args, tableAlias: 't');
+    _applyStatsDateFilter(filter, where, args, tableAlias: 't');
     final whereSql = 'where ${where.join(' and ')}';
 
     final rows = await database.rawQuery('''
@@ -378,14 +336,29 @@ class TransactionsDao {
     return rows;
   }
 
-  // category-wise expense for pie chart, filtered by date/bank
+  //last 5 month transaction data for bar graph stats
+  Future<List<Map<String, Object?>>> getLastFiveMonthsExpense() async {
+    final rows = await database.rawQuery('''
+      select
+        date(date, 'start of month', 'localtime') as monthStart,
+        sum(amount) as totalExpense
+      from transactions
+      where type = 'expense'
+        and date(date) >= date('now', 'start of month', '-4 months', 'localtime')
+      group by monthStart
+      order by monthStart
+    ''');
+    return rows;
+  }
+
+  // category-wise expense for pie chart, filtered by date
   Future<List<Map<String, dynamic>>> getCategoryExpenseForStats(
     StatisticsFilter filter,
   ) async {
     final where = <String>["t.type = 'expense'", 't.categoryId is not null'];
     final args = <Object?>[];
 
-    _applyStatsDateAndBankFilter(filter, where, args, tableAlias: 't');
+    _applyStatsDateFilter(filter, where, args, tableAlias: 't');
     final whereSql = 'where ${where.join(' and ')}';
 
     final rows = await database.rawQuery('''
@@ -410,12 +383,9 @@ class TransactionsDao {
     return rows;
   }
 
-  // last 5 months income/expense (bank-filtered; time = last 5 months)
-  Future<List<Map<String, Object?>>> getLastFiveMonthsStats({
-    int? bankId,
-  }) async {
-    final rows = await database.rawQuery(
-      '''
+  // last 5 months income/expense for line chart
+  Future<List<Map<String, Object?>>> getLastFiveMonthsStats() async {
+    final rows = await database.rawQuery('''
       select
         date(date, 'start of month', 'localtime') as monthStart,
         sum(case when type = 'income' then amount else 0 end) as totalIncome,
@@ -425,9 +395,51 @@ class TransactionsDao {
         and (? is null or bankId = ?)
       group by monthStart
       order by monthStart
-      ''',
-      [bankId, bankId],
-    );
+      ''');
     return rows;
+  }
+
+  //here in settings page we will return transaction data between two dates
+  Future<List<TransactionModel>> getTransactionsBetweenDates(
+    DateTime? from,
+    DateTime? to,
+  ) async {
+    List<Object?> whereArgs = [];
+    String whereSql = '';
+    if (from != null && to != null) {
+      whereSql = 'where date(t.date) >= date(?) and date(t.date) <= date(?)';
+      whereArgs.add(from.toIso8601String());
+      whereArgs.add(to.toIso8601String());
+    } else if (from != null) {
+      whereSql = 'where date(t.date) >= date(?)';
+      whereArgs.add(from.toIso8601String());
+    } else if (to != null) {
+      whereSql = 'where date(t.date) <= date(?)';
+      whereArgs.add(to.toIso8601String());
+    }
+
+    final rows = await database.rawQuery('''
+      select
+        t.id,
+        t.bankId,
+        b.name as bankName,
+        t.amount,
+        t.balance,
+        t.type,
+        t.categoryId,
+        c.name as category,
+        c.icon_code_point,
+        c.icon_font_family,
+        c.icon_font_package,
+        t.date,
+        t.notes
+      from transactions t
+      join bank b on t.bankId = b.id
+      left join categories c on t.categoryId = c.id
+      $whereSql
+      order by b.name, datetime(t.date) desc
+      ''', whereArgs);
+
+    return rows.map((e) => TransactionModel.fromMap(e)).toList();
   }
 }

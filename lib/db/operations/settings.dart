@@ -18,7 +18,7 @@ class SettingDao {
   // Insert default settings
   static const insertDefault = '''
       insert into settings (settingsKey, settingsValue) values
-      ('notifications', 'enabled'),
+      ('notifications', 'disabled'),
       ('theme', 'disabled'),
       ('authentication', 'disabled'),
       ('password', null);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import './settings/security.dart';
+import 'settings/data_screen.dart';
+import 'settings/security/security.dart';
 import './settings/bill_reminder.dart';
 import './db/database_helper.dart';
 import './home/home.dart';
@@ -11,7 +12,7 @@ import './services/reminder_notification.dart';
 import './notification/notification.dart';
 import './services/route_observer.dart';
 import './bank/bank.dart';
-import './settings/unlock.dart';
+import './settings/security/unlock_screen.dart';
 import './transactions/add_transaction.dart';
 import './transactions/history.dart';
 import './budget/budget_screen.dart';
@@ -89,11 +90,13 @@ class MyApp extends StatelessWidget {
           ),
         ),
 
-         textSelectionTheme: TextSelectionThemeData(
+        textSelectionTheme: TextSelectionThemeData(
           cursorColor: kSecondaryColor,
           selectionColor: kSecondaryColor.withAlpha(128),
           selectionHandleColor: kSecondaryColor,
         ),
+
+        // use colorScheme.onSurface for label color so it adapts to dark mode
         inputDecorationTheme: InputDecorationTheme(
           labelStyle: const TextStyle(color: kGrey),
           floatingLabelStyle: const TextStyle(color: kSecondaryColor),
@@ -113,7 +116,7 @@ class MyApp extends StatelessWidget {
 
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: kWhite,
-        textTheme: poppinsTextTheme(Brightness.light),
+        textTheme: poppinsTextTheme(context, Brightness.light),
         appBarTheme: const AppBarTheme(backgroundColor: kWhite),
         bottomAppBarTheme: const BottomAppBarThemeData(
           color: Color.fromARGB(255, 245, 245, 245),
@@ -123,6 +126,7 @@ class MyApp extends StatelessWidget {
       // 2. Add the dark theme
       darkTheme: ThemeData(
         brightness: Brightness.dark,
+
         cardTheme: CardThemeData(
           color: const Color.fromARGB(255, 18, 18, 18),
           shadowColor: const Color.fromARGB(255, 233, 230, 230),
@@ -134,11 +138,12 @@ class MyApp extends StatelessWidget {
           ),
         ),
 
-         textSelectionTheme: TextSelectionThemeData(
+        textSelectionTheme: TextSelectionThemeData(
           cursorColor: kSecondaryColor,
           selectionColor: kSecondaryColor.withAlpha(128),
           selectionHandleColor: kSecondaryColor,
         ),
+
         inputDecorationTheme: InputDecorationTheme(
           labelStyle: const TextStyle(color: kGrey),
           floatingLabelStyle: const TextStyle(color: kSecondaryColor),
@@ -158,19 +163,19 @@ class MyApp extends StatelessWidget {
 
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: kBlack,
-        textTheme: poppinsTextTheme(Brightness.dark),
+        textTheme: poppinsTextTheme(context, Brightness.dark),
         appBarTheme: const AppBarTheme(backgroundColor: kBlack),
         bottomAppBarTheme: const BottomAppBarThemeData(
           color: Color.fromARGB(255, 18, 18, 18),
         ),
       ),
 
-      // 3Set the themeMode to follow the system
+      // 3 Set the themeMode to follow the system
       themeMode: themeProvider.themeMode,
 
       routes: <String, WidgetBuilder>{
         '/': (context) => SplashScreen(),
-        Unlock.id: (context) => const Unlock(),
+        UnlockScreen.id: (context) => const UnlockScreen(),
 
         HomeScreen.id: (context) => HomeScreen(),
 
@@ -187,6 +192,7 @@ class MyApp extends StatelessWidget {
         BillReminder.id: (context) => BillReminder(),
         SecurityScreen.id: (context) => const SecurityScreen(),
         HowToUseScreen.id: (context) => const HowToUseScreen(),
+        DataScreen.id: (context) => const DataScreen(),
 
         NotificationCenterScreen.id:
             (context) => const NotificationCenterScreen(),
@@ -211,46 +217,43 @@ class ThemeProvider extends ChangeNotifier {
   }
 }
 
-TextTheme poppinsTextTheme(Brightness brightness) {
-  final base =
-      brightness == Brightness.dark ? ThemeData.dark() : ThemeData.light();
-  final textTheme = base.textTheme;
+TextTheme poppinsTextTheme(BuildContext context, Brightness brightness) {
+  final base = ThemeData.light().textTheme;
+  final width = MediaQuery.of(context).size.width;
 
-  return textTheme
+  // Responsive scale - unchanged from your request (no extra sizes added)
+  final scale = (width / 375).clamp(0.9, 1.2);
+
+  final Color textColor = brightness == Brightness.dark ? kWhite : kBlack;
+
+  return base
       .copyWith(
-        displayLarge: textTheme.displayLarge?.copyWith(
+        displayLarge: base.displayLarge?.copyWith(
           fontWeight: FontWeight.w800,
-          fontSize: 30,
+          fontSize: (24 * scale).clamp(20, 28),
           letterSpacing: 0,
-          color: brightness == Brightness.dark ? kWhite : kBlack,
+          color: textColor,
         ),
 
-        headlineMedium: textTheme.headlineMedium?.copyWith(
+        headlineMedium: base.headlineMedium?.copyWith(
           fontWeight: FontWeight.w700,
-          fontSize: 24,
+          fontSize: (20 * scale).clamp(18, 24),
           letterSpacing: 0,
-          color: brightness == Brightness.dark ? kWhite : kBlack,
+          color: textColor,
         ),
 
-        bodyLarge: textTheme.bodyLarge?.copyWith(
+        bodyLarge: base.bodyLarge?.copyWith(
           fontWeight: FontWeight.w500,
-          fontSize: 16,
+          fontSize: (16 * scale).clamp(14, 18),
           letterSpacing: 0.5,
-          color: brightness == Brightness.dark ? kWhite : kBlack,
+          color: textColor,
         ),
 
-        bodyMedium: textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-          fontSize: 14,
+        bodyMedium: base.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w400,
+          fontSize: (14 * scale).clamp(12, 16),
           letterSpacing: 0.25,
-          color: brightness == Brightness.dark ? kWhite : kBlack,
-        ),
-
-        bodySmall: textTheme.bodySmall?.copyWith(
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
-          letterSpacing: 0.4,
-          color: brightness == Brightness.dark ? kWhite : kBlack,
+          color: textColor,
         ),
       )
       .apply(fontFamily: 'Poppins');

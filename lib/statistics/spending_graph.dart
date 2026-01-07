@@ -130,7 +130,7 @@ class _SpendingBarChartState extends State<SpendingBarChart> {
                         getTitlesWidget: (value, meta) {
                           if (value < 0) return const SizedBox.shrink();
                           return Text(
-                            value.toStringAsFixed(0),
+                            _abbreviateNumber(value),
                             style: textTheme.bodySmall,
                           );
                         },
@@ -165,13 +165,26 @@ class _SpendingBarChartState extends State<SpendingBarChart> {
     );
   }
 
+  //helper function for abbreviating large numbers
+  String _abbreviateNumber(num value) {
+    if (value >= 10000000) {
+      return '${(value / 10000000).toStringAsFixed(1)}Cr';
+    } else if (value >= 100000) {
+      return '${(value / 100000).toStringAsFixed(1)}L';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}k';
+    } else {
+      return value.toStringAsFixed(0);
+    }
+  }
+
   BarChartGroupData _barGroupData(int x, double y, bool isHighlighted) {
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
           toY: y,
-          color: isHighlighted ? kPrimaryColor : kPrimaryColor.withAlpha(180),
+          color: isHighlighted ? kRed : kRed.withAlpha(180),
           width: 22,
           borderRadius: BorderRadius.circular(6),
         ),

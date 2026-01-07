@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../db/database_helper.dart';
+import '../settings/security/unlock_screen.dart';
 import '../utility/constant.dart';
+import './home.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -36,9 +38,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
       // Navigate to your main app screen
       if (authentication) {
-        Navigator.of(context).pushReplacementNamed('/unlock');
+        Navigator.of(context).pushReplacementNamed(UnlockScreen.id);
       } else {
-        Navigator.of(context).pushReplacementNamed('/home');
+        Navigator.of(context).pushReplacementNamed(HomeScreen.id);
       }
     });
   }

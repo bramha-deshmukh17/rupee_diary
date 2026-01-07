@@ -82,7 +82,11 @@ class _AddTransactionState extends State<AddTransaction> {
         }
       });
     } catch (_) {
-      showSnack("Failed to load categories. Try again later...!", context, error: true);
+      showSnack(
+        "Failed to load categories. Try again later...!",
+        context,
+        error: true,
+      );
     }
   }
 
@@ -303,7 +307,8 @@ class _AddTransactionState extends State<AddTransaction> {
             khBox,
 
             // Segmented type selector
-            Center(
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               child: ToggleButtons(
                 isSelected: List.generate(
                   _types.length,
@@ -313,21 +318,19 @@ class _AddTransactionState extends State<AddTransaction> {
                 borderRadius: BorderRadius.circular(16),
                 fillColor: kPrimaryColor,
                 selectedBorderColor: kPrimaryColor,
-                constraints: const BoxConstraints(
-                  minHeight: 36,
-                  minWidth: 90,
-                ),
+                constraints: const BoxConstraints(minHeight: 36, minWidth: 90),
                 children:
-                    _types
-                        .map(
-                          (t) => Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0,
-                            ),
-                            child: Text(t, style: textTheme.bodyLarge),
-                          ),
-                        )
-                        .toList(),
+                    _types.map((t) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          t,
+                          style: textTheme.bodyLarge,
+                          maxLines: 1,
+                          overflow: TextOverflow.visible, // no ellipsis
+                        ),
+                      );
+                    }).toList(),
               ),
             ),
             khBox,
@@ -339,13 +342,17 @@ class _AddTransactionState extends State<AddTransaction> {
                 title: 'Category',
                 trailing: DropdownButtonHideUnderline(
                   child: DropdownButton<CategoryModel>(
+                    alignment: AlignmentGeometry.centerRight,
                     value: _selectedCategory,
                     items:
                         _expenseCategories
                             .map(
                               (cat) => DropdownMenuItem<CategoryModel>(
                                 value: cat,
-                                child: Text(cat.name),
+                                child: Text(
+                                  cat.name,
+                                  style: textTheme.bodyLarge,
+                                ),
                               ),
                             )
                             .toList(),
@@ -363,6 +370,7 @@ class _AddTransactionState extends State<AddTransaction> {
               title: 'Bank',
               trailing: DropdownButtonHideUnderline(
                 child: DropdownButton<int>(
+                  alignment: AlignmentGeometry.centerRight,
                   value: _selectedBankId,
                   hint: const Text('Select'),
                   items:
@@ -374,7 +382,10 @@ class _AddTransactionState extends State<AddTransaction> {
                                 : name;
                         return DropdownMenuItem<int>(
                           value: b.id,
-                          child: Text(display, style: textTheme.bodyLarge),
+                          child: Text(
+                            display,
+                            style: textTheme.bodyLarge,
+                          ),
                         );
                       }).toList(),
                   onChanged: (v) {
@@ -453,7 +464,6 @@ class _AddTransactionState extends State<AddTransaction> {
     );
   }
 
-
   //if bank not found show this dialog to add bank first
   void addBankDialog(
     BuildContext context, {
@@ -470,7 +480,7 @@ class _AddTransactionState extends State<AddTransaction> {
             title: Text('No Banks Found', style: textTheme.bodyLarge),
             content: Text(
               'Add a bank before adding transactions.',
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: textTheme.bodyMedium,
             ),
             actions: [
               TextButton(
@@ -511,7 +521,7 @@ class _TileCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: kGrey.withAlpha(100)),
         boxShadow: [
@@ -523,6 +533,7 @@ class _TileCard extends StatelessWidget {
         ],
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -530,10 +541,11 @@ class _TileCard extends StatelessWidget {
               color: kSecondaryColor.withAlpha(25),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: kSecondaryColor),
+            child: Tooltip(
+              message: title,
+              child: Icon(icon, color: kSecondaryColor),
+            ),
           ),
-          kwBox,
-          Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
           trailing,
         ],
       ),

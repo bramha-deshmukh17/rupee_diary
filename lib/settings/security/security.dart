@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../db/database_helper.dart';
-import '../db/model/setting.dart';
-import '../utility/appbar.dart';
-import '../utility/constant.dart';
-import '../utility/snack.dart';
+import '../../db/database_helper.dart';
+import '../../db/model/setting.dart';
+import '../../utility/appbar.dart';
+import '../../utility/constant.dart';
+import '../../utility/snack.dart';
 
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key});
-  static const String id = '/security';
+  static const String id = '/setting/security';
 
   @override
   State<StatefulWidget> createState() {

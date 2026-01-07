@@ -137,36 +137,49 @@ class CategoryBudgetCard extends StatelessWidget {
                 kwBox,
 
                 // Title
-                Expanded(
-                  child: Text(
-                    title,
-                    style: textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                // Amount
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Icon(FontAwesomeIcons.pen, size: 15.0),
-                    Text(
-                      "₹${spent.toInt()} / ₹${total.toInt()}",
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.3,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                      title,
                       style: textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isOver
-                          ? "₹${remaining.toInt()} over"
-                          : "₹${remaining.toInt()} left",
-                      style: textTheme.bodySmall?.copyWith(
-                        color: isOver ? kRed : kGrey,
+                  ),
+                ),
+                const Spacer(),
+                // Amount
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.30,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Icon(FontAwesomeIcons.pen, size: 15.0),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(
+                          "₹${spent.toInt()} / ₹${total.toInt()}",
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(
+                          isOver
+                              ? "₹${remaining.toInt()} over"
+                              : "₹${remaining.toInt()} left",
+                          style: textTheme.bodySmall?.copyWith(
+                            color: isOver ? kRed : kGrey,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

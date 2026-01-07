@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rupee_diary/utility/constant.dart';
 
-import '../db/database_helper.dart';
-import '../home/home.dart';
+import '../../db/database_helper.dart';
+import '../../home/home.dart';
 
-class Unlock extends StatefulWidget {
-  const Unlock({super.key});
+class UnlockScreen extends StatefulWidget {
+  const UnlockScreen({super.key});
   static const String id = '/unlock';
 
   @override
-  State<StatefulWidget> createState() => _UnlockState();
+  State<StatefulWidget> createState() => _UnlockScreenState();
 }
 
-class _UnlockState extends State<Unlock> {
+class _UnlockScreenState extends State<UnlockScreen> {
   final _pinController = TextEditingController();
   final _pinFocus = FocusNode();
 
@@ -157,7 +157,7 @@ class _UnlockState extends State<Unlock> {
                                   color: kPrimaryColor,
                                 ),
                               )
-                              : Text('Unlock', style: theme.textTheme.bodyMedium?.copyWith(color: kGrey),),
+                              : Text('UnlockScreen', style: theme.textTheme.bodyMedium?.copyWith(color: kGrey),),
                     ),
                   ),
                   

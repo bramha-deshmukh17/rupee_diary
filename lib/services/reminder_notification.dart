@@ -22,8 +22,8 @@ class ReminderNotificationService {
   static int kReminderHour = 09; // 9 AM
   static int kReminderMinute = 00; // 0 Minutes
 
-  /// Initialize timezone, notification plugin, permissions, and migrate reminders.
-  /// If [context] is provided, permission-related snackbars will be shown.
+  // Initialize timezone, notification plugin, permissions, and migrate reminders.
+  // If [context] is provided, permission-related snackbars will be shown.
   static Future<void> initialize([BuildContext? context]) async {
     if (_initialized) return;
 
@@ -69,7 +69,7 @@ class ReminderNotificationService {
     _initialized = true;
   }
 
-  /// Reads notification setting from DB.
+  // Reads notification setting from DB.
   static Future<bool> _notificationsEnabled() async {
     try {
       final settings = await DatabaseHelper.instance.settingDao.getSettings();
@@ -87,7 +87,7 @@ class ReminderNotificationService {
     }
   }
 
-  /// Request permissions show error snack if denied
+  // Request permissions show error snack if denied
   static Future<void> _requestPermissions(BuildContext? context) async {
     try {
       if (await Permission.notification.isDenied) {
@@ -103,7 +103,7 @@ class ReminderNotificationService {
     }
   }
 
-  /// Handle notification action taps (mark paid / dismiss).
+  // Handle notification action taps (mark paid / dismiss).
   static void _onNotificationTap(NotificationResponse response) async {
     final payload = response.payload ?? '';
     final id = _parseReminderId(payload);
@@ -160,9 +160,9 @@ class ReminderNotificationService {
     return null;
   }
 
-  /// Schedule notifications for a reminder.
-  /// If [context] is provided, a success / error SnackBar will be shown.
-  /// If [skipInitialize] is true, this function will NOT call initialize() (useful during migration).
+  // Schedule notifications for a reminder.
+  // If [context] is provided, a success / error SnackBar will be shown.
+  // If [skipInitialize] is true, this function will NOT call initialize() (useful during migration).
   static Future<void> scheduleReminderNotifications(
     BillReminderModel reminder, {
     BuildContext? context,
@@ -287,7 +287,7 @@ class ReminderNotificationService {
   static DateTime _atReminderTime(DateTime d) =>
       DateTime(d.year, d.month, d.day, kReminderHour, kReminderMinute);
 
-  /// Internal scheduler wrapper.
+  // Internal scheduler wrapper.
   static Future<void> _schedule({
     required int id,
     required String title,
@@ -331,13 +331,13 @@ class ReminderNotificationService {
       tz.TZDateTime.from(scheduled, tz.local),
       NotificationDetails(android: android, iOS: ios),
       payload: payload,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents:
           recurring ? DateTimeComponents.dayOfMonthAndTime : null,
     );
   }
 
-  /// Cancel notifications for a reminder. If [context] is provided, show a snackbar.
+  // Cancel notifications for a reminder.
   static Future<void> cancelReminderNotifications(
     int id, {
     BuildContext? context,
@@ -348,8 +348,9 @@ class ReminderNotificationService {
     if (context != null) showSnack('Existing notifications cleared', context);
   }
 
-  /// Move past recurring reminders forward and reschedule. Shows snack if [context] provided.
-  /// Uses scheduleReminderNotifications(..., skipInitialize: true) to avoid reinitialization loop.
+  // Move past recurring reminders forward and reschedule.
+  // Uses scheduleReminderNotifications(..., skipInitialize: true) to avoid reinitialization loop.
+  // if anyonw recurring reminder is failed to mark as paid it will automatically catch up here
   static Future<void> _migratePastRecurringReminders(
     BuildContext? context,
   ) async {
@@ -402,8 +403,7 @@ class ReminderNotificationService {
     return DateTime(targetYear, targetMonth, base.day.clamp(1, lastDay));
   }
 
-  /// Advance a recurring reminder after marking paid and reschedule next occurrence.
-  /// If [context] is provided, show a snackbar on success/failure.
+  // Advance a recurring reminder after marking paid and reschedule next occurrence.
   static Future<void> advanceRecurringAndReschedule(
     BillReminderModel reminder, {
     BuildContext? context,
@@ -466,7 +466,7 @@ class ReminderNotificationService {
     }
   }
 
-  /// Count pending reminders for today/tomorrow
+  // Count pending reminders for today/tomorrow
   static Future<int> getTodayTomorrowPendingCount() async {
     if (!(await _notificationsEnabled())) return 0;
 
