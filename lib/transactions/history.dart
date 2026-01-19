@@ -546,7 +546,7 @@ class _FilterSheetState extends State<FilterSheet> {
   Future<void> _pickRange() async {
     final now = DateTime.now();
     final firstDate = DateTime(now.year - 5);
-    final lastDate = DateTime(now.year + 5);
+    final lastDate = DateTime.now();
 
     final picked = await showDateRangePicker(
       context: context,

@@ -183,11 +183,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           // Data Control
-          const SectionTitle(title: "DATA & BACKUP"),
+          const SectionTitle(title: "DATA MANAGEMENT"),
           SettingsTile(
             icon: FontAwesomeIcons.database,
             iconColor: kPrimaryColor,
-            title: "Backup, export & clear data",
+            title: "Your Data",
             trailing: const Icon(FontAwesomeIcons.chevronRight, size: 15.0),
             onTap: () {
               Navigator.pushNamed(context, DataScreen.id);
@@ -213,7 +213,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap:
                 () => openURL(
                   context,
-                  "https://bramhadeshmukh.me/privacy/rupeediary",
+                  "https://labs.bramhadeshmukh.me/app/rupee-diary/privacy-policy",
                 ),
           ),
           SettingsTile(
@@ -230,7 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           khBox, khBox,
           Center(
             child: Text(
-              "Version 1.5.5",
+              "Version 1.5.6",
               style: textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
           ),

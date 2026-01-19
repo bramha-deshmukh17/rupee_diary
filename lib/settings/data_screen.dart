@@ -21,11 +21,11 @@ class DataScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: Appbar(title: "Data", isBackButton: true,),
+      appBar: Appbar(title: "Data Management", isBackButton: true,),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const SectionTitle(title: "Backup & Restore"),
+          const SectionTitle(title: "BACKUP & RESTORE"),
           SettingsTile(
             icon: FontAwesomeIcons.download,
             iconColor: kPrimaryColor,
@@ -83,7 +83,7 @@ class DataScreen extends StatelessWidget {
             },
           ),
 
-          const SectionTitle(title: "DATA MANAGEMENT"),
+          const SectionTitle(title: "MORE"),
           // export to CSV
           SettingsTile(
             icon: FontAwesomeIcons.fileCsv,

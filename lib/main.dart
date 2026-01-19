@@ -78,6 +78,10 @@ class MyApp extends StatelessWidget {
       // 1. Your existing light theme
       theme: ThemeData(
         brightness: Brightness.light,
+        colorScheme: ThemeData.light().colorScheme.copyWith(
+          primary: kPrimaryColor,
+          secondary: kSecondaryColor,
+        ),
 
         cardTheme: CardThemeData(
           color: kWhite,
@@ -114,6 +118,23 @@ class MyApp extends StatelessWidget {
           ),
         ),
 
+        //date selector
+        datePickerTheme: DatePickerThemeData(
+          headerBackgroundColor: kPrimaryColor,
+          headerForegroundColor: kWhite,
+          rangeSelectionBackgroundColor: kSecondaryColor.withAlpha(100), // ~15%
+          rangeSelectionOverlayColor: WidgetStatePropertyAll(
+            Color.fromARGB(30, 0, 0, 0), // optional, can remove
+          ),
+          todayBorder: const BorderSide(color: kSecondaryColor, width: 1.5),
+          todayForegroundColor: WidgetStateColor.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return kWhite;
+            }
+            return kSecondaryColor;
+          }),
+        ),
+
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: kWhite,
         textTheme: poppinsTextTheme(context, Brightness.light),
@@ -126,7 +147,10 @@ class MyApp extends StatelessWidget {
       // 2. Add the dark theme
       darkTheme: ThemeData(
         brightness: Brightness.dark,
-
+        colorScheme: ThemeData.dark().colorScheme.copyWith(
+          primary: kPrimaryColor,
+          secondary: kSecondaryColor,
+        ),
         cardTheme: CardThemeData(
           color: const Color.fromARGB(255, 18, 18, 18),
           shadowColor: const Color.fromARGB(255, 233, 230, 230),
@@ -159,6 +183,23 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(8.0),
             borderSide: const BorderSide(color: kSecondaryColor, width: 2.0),
           ),
+        ),
+
+        //date selector
+         datePickerTheme: DatePickerThemeData(
+          headerBackgroundColor: kPrimaryColor,
+          headerForegroundColor: kWhite,
+          rangeSelectionBackgroundColor: kSecondaryColor.withAlpha(100), // ~15%
+          rangeSelectionOverlayColor: WidgetStatePropertyAll(
+            Color.fromARGB(30, 0, 0, 0), // optional, can remove
+          ),
+          todayBorder: const BorderSide(color: kSecondaryColor, width: 1.5),
+          todayForegroundColor: WidgetStateColor.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return kWhite;
+            }
+            return kSecondaryColor;
+          }),
         ),
 
         fontFamily: 'Poppins',
@@ -252,6 +293,13 @@ TextTheme poppinsTextTheme(BuildContext context, Brightness brightness) {
         bodyMedium: base.bodyMedium?.copyWith(
           fontWeight: FontWeight.w400,
           fontSize: (14 * scale).clamp(12, 16),
+          letterSpacing: 0.25,
+          color: textColor,
+        ),
+
+        bodySmall: base.bodySmall?.copyWith(
+          fontWeight: FontWeight.w400,
+          fontSize: (12 * scale).clamp(12, 16),
           letterSpacing: 0.25,
           color: textColor,
         ),

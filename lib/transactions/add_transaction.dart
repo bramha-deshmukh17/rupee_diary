@@ -120,11 +120,12 @@ class _AddTransactionState extends State<AddTransaction> {
   //date picker for the transaction date
   Future<void> _pickDate() async {
     final now = DateTime.now();
+    final first = DateTime(now.year, now.month - 1, 1);
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime(now.month - 1),
-      lastDate: DateTime.now(),
+      firstDate: first,
+      lastDate: now,
     );
     if (pickedDate == null) return;
 
