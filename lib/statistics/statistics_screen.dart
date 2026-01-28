@@ -232,9 +232,9 @@ class _FilterSheetState extends State<FilterSheet> {
               labelText: 'Select month',
             ),
             items: [
-              const DropdownMenuItem<DateTime?>(
+              DropdownMenuItem<DateTime?>(
                 value: null,
-                child: Text('None (use date range / default)'),
+                child: Text('None (use date range / default)', style: textTheme.bodyLarge,),
               ),
               ..._monthOptions.map(
                 (m) => DropdownMenuItem<DateTime?>(

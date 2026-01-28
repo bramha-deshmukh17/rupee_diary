@@ -232,7 +232,7 @@ class ReminderNotificationService {
             id:
                 reminder.id! * 10 +
                 1, // same id replaces any previous pending instance
-            title: '⚠️ Bill Due Today',
+            title: 'Bill Due Today',
             body:
                 '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
             scheduled: now.add(const Duration(minutes: 1)),
@@ -244,7 +244,7 @@ class ReminderNotificationService {
         if (beforeAt.isAfter(now)) {
           await _schedule(
             id: reminder.id! * 10,
-            title: '📋 Bill Due Tomorrow',
+            title: 'Bill Due Tomorrow',
             body:
                 '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
             scheduled: beforeAt,
@@ -254,7 +254,7 @@ class ReminderNotificationService {
         if (dueAt.isAfter(now)) {
           await _schedule(
             id: reminder.id! * 10 + 1,
-            title: '⚠️ Bill Due Today',
+            title: 'Bill Due Today',
             body:
                 '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
             scheduled: dueAt,
@@ -264,7 +264,7 @@ class ReminderNotificationService {
           // catch-up: schedule in a minute if due is today and time already passed
           await _schedule(
             id: reminder.id! * 10 + 1,
-            title: '⚠️ Bill Due Today',
+            title: 'Bill Due Today',
             body:
                 '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
             scheduled: now.add(const Duration(minutes: 1)),

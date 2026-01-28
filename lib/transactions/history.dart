@@ -234,7 +234,7 @@ class TransactionTile extends StatelessWidget {
 
             const SizedBox(height: 4),
             Text(
-              DateFormat('dd/MM/yyyy • hh:mm:ss').format(transaction.date),
+              DateFormat('dd/MM/yyyy • hh:mm a').format(transaction.date),
               style: textTheme.bodySmall,
             ),
           ],

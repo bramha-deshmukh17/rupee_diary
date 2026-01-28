@@ -204,20 +204,37 @@ class CategoryBudgetCard extends StatelessWidget {
   }
 }
 
-class EditBudget extends StatelessWidget {
+class EditBudget extends StatefulWidget {
   final int budgetId;
   final String categoryName;
   final VoidCallback onSave;
   final double amount;
-  final TextEditingController amountController = TextEditingController();
 
-  EditBudget({
+  const EditBudget({
     super.key,
     required this.budgetId,
     required this.categoryName,
     required this.onSave,
     required this.amount,
   });
+
+  @override
+  State<EditBudget> createState() => _EditBudgetState();
+}
+
+class _EditBudgetState extends State<EditBudget> {
+  late TextEditingController amountController;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    amountController = TextEditingController(text: widget.amount.toString());
+    // Request focus when dialog opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
 
   double _extractAmount() => extractAmountFromText(amountController.text);
 
@@ -229,7 +246,7 @@ class EditBudget extends StatelessWidget {
     final amount = _extractAmount();
     try {
       return await DatabaseHelper.instance.budgetDao.updateBudget(
-        budgetId,
+        widget.budgetId,
         amount,
       );
     } catch (e) {
@@ -240,17 +257,17 @@ class EditBudget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    amountController.text = amount.toString();
     return AlertDialog(
       backgroundColor: Theme.of(context).cardTheme.color,
       shadowColor: Theme.of(context).cardTheme.shadowColor,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(categoryName, style: textTheme.bodyLarge),
+          Text(widget.categoryName, style: textTheme.bodyLarge),
           khBox,
           TextField(
             controller: amountController,
+            focusNode: _focusNode,
             keyboardType: const TextInputType.numberWithOptions(
               decimal: true,
               signed: false,
@@ -280,7 +297,7 @@ class EditBudget extends StatelessWidget {
                   context,
                 );
                 if (ok) {
-                  onSave(); // reload budgets in parent
+                  widget.onSave(); // reload budgets in parent
                   Navigator.of(context).pop(); // close dialog
                 }
               },

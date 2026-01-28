@@ -187,7 +187,7 @@ class _AddBudgetDialogState extends State<AddBudgetDialog> {
                         .map(
                           (element) => DropdownMenuItem<CategoryModel>(
                             value: element,
-                            child: Text(element.name),
+                            child: Text(element.name, style: textTheme.bodyMedium,),
                           ),
                         )
                         .toList(),
