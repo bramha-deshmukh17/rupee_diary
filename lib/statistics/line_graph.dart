@@ -125,7 +125,7 @@ class _BudgetVsIncomeExpenseLineSectionState
     }
     if (maxY <= 0) maxY = 1;
     maxY *= 1.4; // some headroom
-
+    final double leftReservedSize = maxY > 10000000 ? 50 : 40;
     return Card(
       elevation: 8,
       child: Padding(
@@ -179,7 +179,7 @@ class _BudgetVsIncomeExpenseLineSectionState
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 40,
+                        reservedSize: leftReservedSize,
                         interval: maxY / 4,
                         getTitlesWidget: (value, meta) {
                           if (value < 0) return const SizedBox.shrink();
@@ -257,9 +257,26 @@ class _BudgetVsIncomeExpenseLineSectionState
 
   //helper function for larger numbers abbreviation
   String _abbreviateNumber(num value) {
-    if (value >= 10000000) {
+    if (value >= 1000000000000000000) {
+      // 1 Shankh = 1,00,00,00,00,00,00,00,000
+      return '${(value / 1000000000000000000).toStringAsFixed(1)}\nShankh';
+    } else if (value >= 10000000000000000) {
+      // 1 Padma = 1,00,00,00,00,00,00,000
+      return '${(value / 10000000000000000).toStringAsFixed(1)}\nPadma';
+    } else if (value >= 100000000000000) {
+      // 1 Neel = 1,00,00,00,00,00,000
+      return '${(value / 100000000000000).toStringAsFixed(1)}\nNeel';
+    } else if (value >= 1000000000000) {
+      // 1 Kharab = 1,00,00,00,00,000
+      return '${(value / 1000000000000).toStringAsFixed(1)}\nKharab';
+    } else if (value >= 10000000000) {
+      // 1 Arab = 1,00,00,00,000
+      return '${(value / 10000000000).toStringAsFixed(1)}\nArab';
+    } else if (value >= 10000000) {
+      // 1 Crore = 1,00,00,000
       return '${(value / 10000000).toStringAsFixed(1)}Cr';
     } else if (value >= 100000) {
+      // 1 Lakh = 1,00,000
       return '${(value / 100000).toStringAsFixed(1)}L';
     } else if (value >= 1000) {
       return '${(value / 1000).toStringAsFixed(1)}k';

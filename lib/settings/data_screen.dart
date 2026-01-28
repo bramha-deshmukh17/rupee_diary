@@ -282,7 +282,7 @@ Future<String?> showPasswordSheet({
             children: [
               Text(
                 title,
-                style: Theme.of(ctx).textTheme.titleLarge,
+                style: textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),
 

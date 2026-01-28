@@ -363,7 +363,7 @@ class _AddBankState extends State<AddBank> {
     final textTheme = Theme.of(context).textTheme;
 
     return AlertDialog(
-      title: Text("Enter Bank Details"),
+      title: Text("Enter Bank Details", style: textTheme.bodyLarge,),
       backgroundColor: Theme.of(context).cardTheme.color,
       shadowColor: Theme.of(context).cardTheme.shadowColor,
       content: SizedBox(
@@ -376,7 +376,7 @@ class _AddBankState extends State<AddBank> {
                 errorText: _errorName,
               ),
               controller: _bankNameController,
-              style: TextStyle(),
+              style: textTheme.bodyMedium,
               onSubmitted:
                   (_) => FocusScope.of(context).requestFocus(_balanceFocusNode),
             ),
