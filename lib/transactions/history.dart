@@ -10,6 +10,7 @@ import '../db/model/transactions.dart';
 import '../db/model/category.dart';
 import '../utility/appbar.dart';
 import '../utility/constant.dart';
+import 'transaction_tile.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -92,6 +93,101 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
+  bool get isNoFilterApplied {
+    if (_filter == null) return true;
+    return _filter!.type == null &&
+        _filter!.categoryId == null &&
+        _filter!.from == null &&
+        _filter!.to == null &&
+        _filter!.minAmount == null &&
+        _filter!.maxAmount == null &&
+        _filter!.bankId == null;
+  }
+
+  Future<void> _deleteLastTransaction() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Theme.of(context).cardTheme.color,
+          title: Text('Delete Transaction?'),
+          content: Text('Are you sure you want to delete the last transaction?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel', style: TextStyle(color: kGrey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Delete', style: TextStyle(color: kRed)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await DatabaseHelper.instance.transactionsDao.deleteLastTransaction();
+      if (!mounted) return;
+      showSnack('Last transaction deleted', context);
+      setState(() {
+        page = 0;
+        _transactions.clear();
+        _hasMoreData = true;
+      });
+      _loadPageWithFilters();
+    }
+  }
+
+  // Helper to pair transfer transactions (sender and receiver)
+  List<dynamic> _groupTransactionsWithPairs(
+    List<TransactionModel> transactions,
+  ) {
+    final result = <dynamic>[];
+    final processedIds = <int?>{};
+
+    for (int i = 0; i < transactions.length; i++) {
+      final tx = transactions[i];
+
+      // Skip if already paired
+      if (processedIds.contains(tx.id)) continue;
+
+      // Look for pair if this is a transfer
+      if (tx.type.toLowerCase() == 'transfer') {
+        for (int j = i + 1; j < transactions.length; j++) {
+          final potentialPair = transactions[j];
+
+          // Check if transactions form a pair
+          if (potentialPair.type.toLowerCase() == 'transfer' &&
+              tx.amount == potentialPair.amount &&
+              tx.date.year == potentialPair.date.year &&
+              tx.date.month == potentialPair.date.month &&
+              tx.date.day == potentialPair.date.day &&
+              tx.categoryId == potentialPair.categoryId &&
+              tx.bankName != potentialPair.bankName) {
+            // Found a pair - add as TransferPair
+            result.add(TransferPair(sender: tx, receiver: potentialPair));
+            processedIds.add(tx.id);
+            processedIds.add(potentialPair.id);
+            break;
+          }
+        }
+
+        // If no pair found, add individually
+        if (!processedIds.contains(tx.id)) {
+          result.add(tx);
+          processedIds.add(tx.id);
+        }
+      } else {
+        // Non-transfer transactions
+        result.add(tx);
+        processedIds.add(tx.id);
+      }
+    }
+
+    return result;
+  }
+
   //helper to check the scroll position on page
   void _onScroll() {
     // Check if we are at the bottom, not currently loading, and have more data to fetch
@@ -127,20 +223,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   )
                   : ListView.builder(
                     controller: _scrollController,
-                    itemCount: _transactions.length,
+                    itemCount:
+                        _groupTransactionsWithPairs(_transactions).length,
                     itemBuilder: (context, index) {
-                      final t = _transactions[index];
-                      return TransactionTile(
-                        transaction: t,
-                        onMarkedReturned: () {
-                          setState(() {
-                            page = 0;
-                            _transactions.clear();
-                            _hasMoreData = true;
-                          });
-                          _loadPageWithFilters();
-                        },
-                      );
+                      final item =
+                          _groupTransactionsWithPairs(_transactions)[index];
+
+                      final isSettlement = item is TransactionModel && item.category?.toLowerCase() == 'settlement';
+                      final isLastTransaction = index == 0 && page == 0 && isNoFilterApplied && !isSettlement;
+                      final onDoubleTap = isLastTransaction ? () => _deleteLastTransaction() : null;
+
+                      if (item is TransferPair) {
+                        return TransferTile(
+                          senderTransaction: item.sender,
+                          receiverTransaction: item.receiver,
+                          onDoubleTap: onDoubleTap,
+                        );
+                      } else if (item is TransactionModel) {
+                        return TransactionTile(
+                          transaction: item,
+                          onDoubleTap: onDoubleTap,
+                          onMarkedReturned: () {
+                            setState(() {
+                              page = 0;
+                              _transactions.clear();
+                              _hasMoreData = true;
+                            });
+                            _loadPageWithFilters();
+                          },
+                        );
+                      }
+                      return SizedBox.shrink();
                     },
                   ),
         ),
@@ -154,301 +267,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
-  }
-}
-
-// transaction tile widget to show individual transaction details
-class TransactionTile extends StatelessWidget {
-  final TransactionModel transaction;
-  final VoidCallback onMarkedReturned;
-
-  const TransactionTile({
-    super.key,
-    required this.transaction,
-    required this.onMarkedReturned,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final type = transaction.type;
-    final colorFor = type == 'income' || type == 'borrow' ? kGreen : kRed;
-
-    final iconCodePoint = transaction.iconCodePoint;
-    final iconFontFamily = transaction.iconFontFamily;
-    final iconFontPackage = transaction.iconFontPackage;
-
-    //use icon info coming from db, fallback to a generic icon if not present
-    final IconData iconData =
-        (iconCodePoint != null)
-            ? IconData(
-              iconCodePoint,
-              fontFamily: iconFontFamily,
-              fontPackage: iconFontPackage,
-            )
-            : FontAwesomeIcons.question;
-
-    return Card(
-      child: ListTile(
-        onTap: showMyDialog('Note', transaction.notes, textTheme, context),
-        onLongPress:
-            (type == 'lend' || type == 'borrow')
-                ? _markAsReturnedDialog(textTheme: textTheme, context: context)
-                : null,
-        contentPadding: const EdgeInsets.all(10.0),
-
-        leading: GestureDetector(
-          onTap: showMyDialog(
-            'Category',
-            transaction.category,
-            textTheme,
-            context,
-          ),
-          child: CircleAvatar(
-            backgroundColor: colorFor,
-            child: Icon(iconData, size: 15, color: kWhite),
-          ),
-        ),
-
-        title: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.3,
-                  child:SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child:  Text(transaction.bankName, style: textTheme.bodyLarge),),
-                ),
-
-                if (transaction.notes != null && transaction.notes!.isNotEmpty)
-                  Icon(
-                    FontAwesomeIcons.solidMessage,
-                    size: 10,
-                    color: textTheme.bodySmall?.color,
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 4),
-            Text(
-              DateFormat('dd/MM/yyyy • hh:mm a').format(transaction.date),
-              style: textTheme.bodySmall,
-            ),
-          ],
-        ),
-
-        trailing: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.3,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Text(
-                  type == 'income' || type == 'borrow'
-                      ? '+₹${transaction.amount.toStringAsFixed(2)}'
-                      : '-₹${transaction.amount.toStringAsFixed(2)}',
-                  style: textTheme.bodyLarge?.copyWith(
-                    color: colorFor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '₹${transaction.balance.toStringAsFixed(2)}',
-                style: textTheme.bodySmall,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  //dialog to show notes or category details when transaction tile is tapped
-  GestureTapCallback? showMyDialog(
-    String title,
-    String? message,
-    TextTheme textTheme,
-    BuildContext context,
-  ) {
-    if (message == null || message.isEmpty) {
-      return null;
-    }
-    return () {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: Theme.of(context).cardTheme.color,
-            shadowColor: Theme.of(context).cardTheme.shadowColor,
-            title: Text(
-              title,
-              style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
-            ),
-            content: Text(message, style: textTheme.bodyMedium),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Close', style: textTheme.bodyLarge),
-              ),
-            ],
-          );
-        },
-      );
-    };
-  }
-
-  // Long-press handler to mark lend/borrow as returned
-  GestureLongPressCallback _markAsReturnedDialog({
-    required TextTheme textTheme,
-    required BuildContext context,
-  }) {
-    return () {
-      showDialog(
-        context: context,
-        builder:
-            (_) => AlertDialog(
-              backgroundColor: Theme.of(context).cardTheme.color,
-              shadowColor: Theme.of(context).cardTheme.shadowColor,
-              title: Text('Mark as Returned', style: textTheme.bodyLarge),
-              content: Text(
-                transaction.type == 'lend'
-                    ? 'Mark this loan as returned? This will add an income entry.'
-                    : 'Mark this borrow as returned? This will add an expense entry.',
-                style: textTheme.bodyMedium,
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel', style: textTheme.bodyLarge),
-                ),
-                isReturned(transaction.notes)
-                    ? TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Already Returned',
-                        style: textTheme.bodyLarge?.copyWith(color: kGrey),
-                      ),
-                    )
-                    : TextButton(
-                      onPressed: () async {
-                        try {
-                          await markTransaction();
-                          if (!context.mounted) return;
-                          Navigator.pop(context);
-                          showSnack('Marked as returned', context);
-                          onMarkedReturned();
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          Navigator.pop(context);
-                          showSnack(
-                            'Failed to mark as returned',
-                            context,
-                            error: true,
-                          );
-                        }
-                      },
-                      child: Text(
-                        'Confirm',
-                        style: textTheme.bodyLarge?.copyWith(color: kGreen),
-                      ),
-                    ),
-              ],
-            ),
-      );
-    };
-  }
-
-  // Function to mark the transaction as returned
-  Future<void> markTransaction() async {
-    // Fetch the bank id needed for insert
-    final rows = await DatabaseHelper.instance.transactionsDao.database.query(
-      'transactions',
-      where: 'id = ?',
-      whereArgs: [transaction.id],
-    );
-    final bankId = rows.isNotEmpty ? rows.first['bankId'] as int : null;
-    if (bankId == null) {
-      throw Exception('Bank not found for transaction');
-    }
-
-    // Build the appended note (preserve existing)
-    final prevNotes = rows.first['notes'] as String?;
-
-    // Create a "return" transaction:
-    final returnType = (transaction.type == 'lend') ? 'income' : 'expense';
-    final now = DateTime.now();
-
-    final banks = await DatabaseHelper.instance.bankDao.getBanks();
-    if (banks.isEmpty) {
-      throw Exception('No banks found');
-    }
-    final data = banks.firstWhere((b) => b.id == bankId);
-
-    // bank's balance after transaction (will be computed in DAO, but kept here if needed elsewhere)
-    double balance = data.balance!;
-    final amount = rows.first['amount']! as num;
-    switch (transaction.type.toLowerCase()) {
-      case 'borrow':
-        balance += amount;
-        break;
-      case 'lend':
-        balance -= amount;
-        break;
-      default:
-        break;
-    }
-
-    //get category id for Settlement from db so that it stays in sync with categories table
-    final settlementCategoryId = await DatabaseHelper.instance.categoryDao
-        .getIdByName('Settlement');
-    if (settlementCategoryId == null) {
-      throw Exception('Settlement category not found in database');
-    }
-
-    final tx = {
-      'bankId': bankId,
-      'amount': amount,
-      'type': returnType,
-      'balance': balance,
-      'categoryId': settlementCategoryId,
-      'date': now.toIso8601String(),
-      'notes':
-          'Return of ${transaction.type} on ${DateFormat('dd/MM/yy').format(transaction.date)}${prevNotes == null || prevNotes.isEmpty ? '' : ' \n$prevNotes'}',
-    };
-
-    await DatabaseHelper.instance.transactionsDao.insertTransaction(tx);
-
-    final tempNote =
-        (prevNotes == null || prevNotes.isEmpty)
-            ? 'returned'
-            : '$prevNotes - returned';
-    // Append note on original txn (safe concat even if notes were NULL)
-    await DatabaseHelper.instance.transactionsDao.database.rawUpdate(
-      '''
-        update transactions
-        set notes = ?
-        where id = ?
-      ''',
-      [
-        tempNote, // append  returned message
-        transaction.id,
-      ],
-    );
-  }
-
-  // check if transaction is already marked as returned
-  bool isReturned(String? notes) {
-    if (notes == null) {
-      return false;
-    }
-    return notes.toLowerCase().contains('returned');
   }
 }
 
@@ -519,7 +337,7 @@ class _FilterSheetState extends State<FilterSheet> {
   //list of categories loaded from db for category filter dropdown
   List<CategoryModel> _categories = [];
 
-  final _types = const ['Income', 'Expense', 'Lend', 'Borrow'];
+  final _types = const ['Income', 'Expense', 'Lend', 'Borrow', 'Transfer'];
 
   @override
   void initState() {
@@ -534,6 +352,47 @@ class _FilterSheetState extends State<FilterSheet> {
 
     _loadBanks();
     _loadCategories();
+  }
+
+  List<CategoryModel> _getFilteredCategories(String? type) {
+    return _categories.where((c) {
+      final n = c.name.toLowerCase();
+      if (type == 'income') {
+        return n == 'settlement';
+      }
+      return n != 'income' && n != 'lend' && n != 'borrow' && n != 'transfer';
+    }).toList();
+  }
+
+  List<DropdownMenuItem<String>> _getCategoryItems() {
+    final items = [
+      const DropdownMenuItem(value: kAll, child: Text('All Categories')),
+    ];
+    final validCats = _getFilteredCategories(_f.type);
+    bool found = _selCategory == kAll;
+    for (final c in validCats) {
+      if (c.id.toString() == _selCategory) found = true;
+      items.add(DropdownMenuItem(value: c.id.toString(), child: Text(c.name)));
+    }
+    if (!found && _selCategory != kAll) {
+      items.add(DropdownMenuItem(value: _selCategory, child: Text(_categories.isEmpty ? 'Loading...' : 'Unknown')));
+    }
+    return items;
+  }
+
+  List<DropdownMenuItem<String>> _getBankItems() {
+    final items = [
+      const DropdownMenuItem(value: kAll, child: Text('All Banks')),
+    ];
+    bool found = _selBank == kAll;
+    for (final b in _banks) {
+      if (b.id.toString() == _selBank) found = true;
+      items.add(DropdownMenuItem(value: b.id.toString(), child: Text(b.name ?? 'Unnamed')));
+    }
+    if (!found && _selBank != kAll) {
+      items.add(DropdownMenuItem(value: _selBank, child: Text(_banks.isEmpty ? 'Loading...' : 'Unknown')));
+    }
+    return items;
   }
 
   @override
@@ -591,12 +450,7 @@ class _FilterSheetState extends State<FilterSheet> {
     try {
       final cats = await DatabaseHelper.instance.categoryDao.getAllCategories();
       setState(() {
-        //exclude Income, Lend, Borrow categories from filter options
-        _categories =
-            cats.where((c) {
-              final n = c.name.toLowerCase();
-              return n != 'income' && n != 'lend' && n != 'borrow';
-            }).toList();
+        _categories = cats;
       });
     } catch (_) {
       showSnack('Failed to load categories', context, error: true);
@@ -678,7 +532,22 @@ class _FilterSheetState extends State<FilterSheet> {
                       checkmarkColor: isSelected ? Colors.white : null,
                       onSelected: (sel) {
                         setState(() {
-                          _f = _f.copyWith(type: sel ? t.toLowerCase() : null);
+                          final newType = sel ? t.toLowerCase() : null;
+                          _f = _f.copyWith(type: newType);
+                          
+                          if (newType == 'lend' || newType == 'borrow' || newType == 'transfer') {
+                            _selCategory = kAll;
+                          } else if (_selCategory != kAll) {
+                            final validCats = _getFilteredCategories(newType);
+                            final exists = validCats.any((c) => c.id.toString() == _selCategory);
+                            if (!exists) {
+                              _selCategory = kAll;
+                            }
+                          }
+                          
+                          if (newType == 'transfer') {
+                            _selBank = kAll;
+                          }
                         });
                       },
                     );
@@ -688,24 +557,14 @@ class _FilterSheetState extends State<FilterSheet> {
 
             // Category dropdown
             DropdownButtonFormField<String>(
-              initialValue: _selCategory,
+              value: _selCategory,
               isExpanded: true,
               style: textTheme.bodyLarge,
               decoration: kBaseInputDecoration.copyWith(labelText: 'Category'),
-              items: [
-                const DropdownMenuItem(
-                  value: kAll,
-                  child: Text('All Categories'),
-                ),
-                //build category list from db so filter options always match actual data
-                ..._categories.map(
-                  (c) => DropdownMenuItem(
-                    value: c.id.toString(),
-                    child: Text(c.name),
-                  ),
-                ),
-              ],
-              onChanged: (v) => setState(() => _selCategory = v ?? kAll),
+              items: _getCategoryItems(),
+              onChanged: (_f.type == 'lend' || _f.type == 'borrow' || _f.type == 'transfer')
+                  ? null
+                  : (v) => setState(() => _selCategory = v ?? kAll),
             ),
             khBox,
 
@@ -757,22 +616,16 @@ class _FilterSheetState extends State<FilterSheet> {
 
             // Bank dropdown
             DropdownButtonFormField<String>(
-              initialValue: _selBank,
+              value: _selBank,
               isExpanded: true,
               style: textTheme.bodyLarge,
               decoration: kBaseInputDecoration.copyWith(labelText: 'Bank'),
-              items: [
-                const DropdownMenuItem(value: kAll, child: Text('All Banks')),
-                ..._banks.map(
-                  (b) => DropdownMenuItem(
-                    value: b.id.toString(),
-                    child: Text(b.name ?? 'Unnamed'),
-                  ),
-                ),
-              ],
-              onChanged: (v) {
-                setState(() => _selBank = v ?? kAll);
-              },
+              items: _getBankItems(),
+              onChanged: (_f.type == 'transfer')
+                  ? null
+                  : (v) {
+                      setState(() => _selBank = v ?? kAll);
+                    },
             ),
             khBox,
 

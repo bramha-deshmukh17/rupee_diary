@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:intl/intl.dart';
 import '../db/database_helper.dart';
 import '../db/model/transactions.dart';
 import '../transactions/history.dart';
+import '../transactions/transaction_tile.dart';
 import '../utility/constant.dart';
 import '../services/route_observer.dart';
 import '../transactions/add_transaction.dart';
@@ -280,6 +280,47 @@ class TransactionsList extends StatelessWidget {
 
   const TransactionsList({super.key, required this.transactions});
 
+  // Helper to pair transfer transactions
+  List<dynamic> _groupedTransactions(List<TransactionModel> txList) {
+    final result = <dynamic>[];
+    final processedIds = <int?>{};
+
+    for (int i = 0; i < txList.length; i++) {
+      final tx = txList[i];
+
+      if (processedIds.contains(tx.id)) continue;
+
+      if (tx.type.toLowerCase() == 'transfer') {
+        for (int j = i + 1; j < txList.length; j++) {
+          final potentialPair = txList[j];
+
+          if (potentialPair.type.toLowerCase() == 'transfer' &&
+              tx.amount == potentialPair.amount &&
+              tx.date.year == potentialPair.date.year &&
+              tx.date.month == potentialPair.date.month &&
+              tx.date.day == potentialPair.date.day &&
+              tx.categoryId == potentialPair.categoryId &&
+              tx.bankName != potentialPair.bankName) {
+            result.add(TransferPair(sender: tx, receiver: potentialPair));
+            processedIds.add(tx.id);
+            processedIds.add(potentialPair.id);
+            break;
+          }
+        }
+
+        if (!processedIds.contains(tx.id)) {
+          result.add(tx);
+          processedIds.add(tx.id);
+        }
+      } else {
+        result.add(tx);
+        processedIds.add(tx.id);
+      }
+    }
+
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -312,157 +353,24 @@ class TransactionsList extends StatelessWidget {
                       ),
                     )
                     : ListView.builder(
-                      itemCount: transactions!.length,
+                      itemCount: _groupedTransactions(transactions!).length,
                       itemBuilder: (context, index) {
-                        final data = transactions![index];
-                        // Simply pass the model object
-                        return TransactionTile(transaction: data);
+                        final item = _groupedTransactions(transactions!)[index];
+
+                        if (item is TransferPair) {
+                          return TransferTile(
+                            senderTransaction: item.sender,
+                            receiverTransaction: item.receiver,
+                          );
+                        } else if (item is TransactionModel) {
+                          return TransactionTile(transaction: item);
+                        }
+                        return SizedBox.shrink();
                       },
                     ),
           ),
         ],
       ),
     );
-  }
-}
-
-//each transaction tile design
-class TransactionTile extends StatelessWidget {
-  final TransactionModel transaction;
-
-  const TransactionTile({super.key, required this.transaction});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    final type = transaction.type;
-    final amount = transaction.amount;
-    final notes = transaction.notes;
-    final balance = transaction.balance;
-    final category = transaction.category;
-    final bankName = transaction.bankName;
-    final DateTime date = transaction.date;
-
-    final iconCodePoint = transaction.iconCodePoint;
-    final iconFontFamily = transaction.iconFontFamily;
-    final iconFontPackage = transaction.iconFontPackage;
-
-    final colorFor = (type == 'income' || type == 'borrow') ? kGreen : kRed;
-
-    //use icon data coming from db, fallback to a generic icon if not present
-    final IconData iconData =
-        (iconCodePoint != null)
-            ? IconData(
-              iconCodePoint,
-              fontFamily: iconFontFamily,
-              fontPackage: iconFontPackage,
-            )
-            : FontAwesomeIcons.question;
-
-    return GestureDetector(
-      onTap: showMyDialog('Note', notes, textTheme, context),
-      child: Card(
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(10.0),
-          leading: GestureDetector(
-            onTap: showMyDialog('Category', category, textTheme, context),
-            child: CircleAvatar(
-              backgroundColor: colorFor,
-              child: Icon(iconData, size: 15, color: kWhite),
-            ),
-          ),
-          title: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Text(bankName, style: textTheme.bodyLarge),
-                    ),
-                  ),
-                  if (notes != null && notes.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Icon(
-                        FontAwesomeIcons.solidMessage,
-                        size: 10,
-                        color: textTheme.bodySmall?.color,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                DateFormat('dd/MM/yyyy • hh:mm a').format(date),
-                style: textTheme.bodySmall,
-              ),
-            ],
-          ),
-          trailing: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.3,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Text(
-                    (type == 'income' || type == 'borrow')
-                        ? '+₹${amount.toStringAsFixed(2)}'
-                        : '-₹${amount.toStringAsFixed(2)}',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: colorFor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(balance.toStringAsFixed(2), style: textTheme.bodySmall),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper method to show dialog to show notes and category of transaction in alert dialog
-  GestureTapCallback? showMyDialog(
-    String title,
-    String? message,
-    TextTheme textTheme,
-    BuildContext context,
-  ) {
-    if (message == null || message.isEmpty) {
-      return null;
-    }
-    return () {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: Theme.of(context).cardTheme.color,
-            shadowColor: Theme.of(context).cardTheme.shadowColor,
-            title: Text(
-              title,
-              style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
-            ),
-            content: Text(message, style: textTheme.bodyMedium),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('Close', style: textTheme.bodyLarge),
-              ),
-            ],
-          );
-        },
-      );
-    };
   }
 }

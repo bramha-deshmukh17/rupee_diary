@@ -240,7 +240,6 @@ Future<void> _exportTransactionsCsv(BuildContext context) async {
       showSnack("CSV exported successfully", context);
     }
   } catch (e) {
-    debugPrint('=================CSV export error: $e');
     if (context.mounted) {
       showSnack("Failed to export CSV", context, error: true);
     }

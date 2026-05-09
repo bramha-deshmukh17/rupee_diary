@@ -48,7 +48,8 @@ class CategoryDao {
       (22, 'Lend', 58619, 'FontAwesomeSolid', 'font_awesome_flutter'),
       (23, 'Borrow', 58619, 'FontAwesomeSolid', 'font_awesome_flutter'),
       (24, 'Settlement', 62133, 'FontAwesomeRegular', 'font_awesome_flutter'),
-      (25, 'Others', 63, 'FontAwesomeSolid', 'font_awesome_flutter');
+      (25, 'Others', 63, 'FontAwesomeSolid', 'font_awesome_flutter'),
+      (26, 'Transfer', 62133, 'FontAwesomeRegular', 'font_awesome_flutter');
   ''';
 
   Future<int?> getIdByName(String name) async {
@@ -65,7 +66,7 @@ class CategoryDao {
   Future<List<CategoryModel>> getExpenseCategories() async {
     final rows = await database.rawQuery('''
       select * from categories
-      where name not in ('Income', 'Lend', 'Borrow')
+      where name not in ('Income', 'Lend', 'Borrow', 'Transfer', 'Settlement')
     ''');
     return rows.map((e) => CategoryModel.fromMap(e)).toList();
   }

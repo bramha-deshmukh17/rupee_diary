@@ -24,7 +24,13 @@ class _AddTransactionState extends State<AddTransaction> {
   final _notesController = TextEditingController();
   double _amount = 0.0;
 
-  final List<String> _types = const ['Expense', 'Income', 'Lend', 'Borrow'];
+  final List<String> _types = const [
+    'Expense',
+    'Income',
+    'Lend',
+    'Borrow',
+    'Transfer',
+  ];
   int _typeIndex = 0;
 
   //list of all categories loaded from db
@@ -40,6 +46,7 @@ class _AddTransactionState extends State<AddTransaction> {
 
   List<BankModel> _banks = [];
   int? _selectedBankId;
+  int? _selectedReceiverBankId; // for transfer destination
 
   @override
   void initState() {
@@ -73,6 +80,7 @@ class _AddTransactionState extends State<AddTransaction> {
               return n != 'income' &&
                   n != 'lend' &&
                   n != 'borrow' &&
+                  n != 'transfer' &&
                   n != 'settlement';
             }).toList();
 
@@ -194,10 +202,27 @@ class _AddTransactionState extends State<AddTransaction> {
         return;
       }
 
+      final typeLower = _types[_typeIndex].toLowerCase();
+
+      // Validation for transfer
+      if (typeLower == 'transfer' && _selectedReceiverBankId == null) {
+        showSnack('Select a receiver bank for transfer', context, error: true);
+        return;
+      }
+
+      if (typeLower == 'transfer' &&
+          _selectedReceiverBankId == _selectedBankId) {
+        showSnack(
+          'Sender and receiver banks cannot be the same',
+          context,
+          error: true,
+        );
+        return;
+      }
+
       //bank's balance after transaction
       double balance =
           banks.firstWhere((b) => b.id == _selectedBankId!).balance!;
-      final typeLower = _types[_typeIndex].toLowerCase();
 
       switch (typeLower) {
         case 'income':
@@ -206,6 +231,7 @@ class _AddTransactionState extends State<AddTransaction> {
           break;
         case 'expense':
         case 'lend':
+        case 'transfer':
           balance -= _amount; //subtract funds
           break;
       }
@@ -216,7 +242,7 @@ class _AddTransactionState extends State<AddTransaction> {
         //for expense use selected category from db
         categoryId = _selectedCategory?.id;
       } else {
-        //for income/lend/borrow use special category rows in db
+        //for income/lend/borrow/transfer use special category rows in db
         categoryId = _categoryIdByTypeName(_types[_typeIndex]);
       }
 
@@ -243,6 +269,39 @@ class _AddTransactionState extends State<AddTransaction> {
       };
       //add transaction to the db
       await DatabaseHelper.instance.transactionsDao.insertTransaction(data);
+
+      // Handle transfer to receiver bank
+      if (typeLower == 'transfer') {
+        final receiverBank = banks.firstWhere(
+          (b) => b.id == _selectedReceiverBankId!,
+        );
+        final receiverBalance =
+            receiverBank.balance! + _amount; // Add amount for receiver
+
+        // Manually insert and update for receiver to ensure correct balance calculation
+        final db = DatabaseHelper.instance.transactionsDao.database;
+        await db.transaction((txn) async {
+          // Update receiver bank balance
+          await txn.rawUpdate('update bank set balance = ? where id = ?', [
+            receiverBalance,
+            _selectedReceiverBankId,
+          ]);
+
+          // Insert receiver transaction
+          await txn.insert('transactions', {
+            'bankId': _selectedReceiverBankId,
+            'amount': _amount,
+            'balance': receiverBalance,
+            'type': 'transfer',
+            'categoryId': _categoryIdByTypeName('Transfer'),
+            'date': _selectedDate.toIso8601String(),
+            'notes':
+                _notesController.text.trim().isEmpty
+                    ? null
+                    : _notesController.text.trim(),
+          });
+        });
+      }
 
       if (!mounted) return;
       showSnack('Transaction added', context);
@@ -365,10 +424,10 @@ class _AddTransactionState extends State<AddTransaction> {
               ),
             khBox,
 
-            //Bank selections card
+            //Bank selections card (Sender bank)
             _TileCard(
               icon: FontAwesomeIcons.bank,
-              title: 'Bank',
+              title: _typeIndex == 4 ? 'From Bank' : 'Bank',
               trailing: DropdownButtonHideUnderline(
                 child: DropdownButton<int>(
                   alignment: AlignmentGeometry.centerRight,
@@ -383,10 +442,7 @@ class _AddTransactionState extends State<AddTransaction> {
                                 : name;
                         return DropdownMenuItem<int>(
                           value: b.id,
-                          child: Text(
-                            display,
-                            style: textTheme.bodyLarge,
-                          ),
+                          child: Text(display, style: textTheme.bodyLarge),
                         );
                       }).toList(),
                   onChanged: (v) {
@@ -396,6 +452,38 @@ class _AddTransactionState extends State<AddTransaction> {
               ),
             ),
             khBox,
+
+            // Receiver bank selector card (Transfer only)
+            if (_typeIndex == 4)
+              _TileCard(
+                icon: FontAwesomeIcons.arrowRight,
+                title: 'To Bank',
+                trailing: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    alignment: AlignmentGeometry.centerRight,
+                    value: _selectedReceiverBankId,
+                    hint: const Text('Select'),
+                    items:
+                        _banks.map((b) {
+                          final name = b.name ?? 'Unnamed';
+                          final display =
+                              name.length > 10
+                                  ? '${name.substring(0, 10)}...'
+                                  : name;
+                          return DropdownMenuItem<int>(
+                            value: b.id,
+                            child: Text(display, style: textTheme.bodyLarge),
+                          );
+                        }).toList(),
+                    onChanged: (v) {
+                      if (v != null && v != _selectedBankId) {
+                        setState(() => _selectedReceiverBankId = v);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            if (_typeIndex == 4) khBox,
 
             // Date selector card
             _TileCard(
