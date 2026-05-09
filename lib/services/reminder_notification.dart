@@ -35,8 +35,7 @@ class ReminderNotificationService {
     } catch (e) {
       debugPrint('ReminderNotificationService: timezone init failed: $e');
     }
-
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('ic_notofication');
     final iosInit = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -200,73 +199,43 @@ class ReminderNotificationService {
     final beforeAt = _atReminderTime(dayBefore);
 
     try {
-      if (reminder.isRecurring ?? false) {
-        // Due day notification (recurring monthly)
-        await _schedule(
-          id: reminder.id! * 10 + 1,
-          title: 'Bill Due Today',
-          body:
-              '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
-          scheduled: dueAt,
-          payload: 'reminder_${reminder.id}_today',
-          recurring: true,
-        );
+      int occurrences = (reminder.isRecurring ?? false) ? 3 : 1;
 
-        // Day-before recurring (skip if due is 1st)
-        if (dueDate.day > 1) {
-          await _schedule(
-            id: reminder.id! * 10,
-            title: 'Bill Due Tomorrow',
-            body:
-                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
-            scheduled: beforeAt,
-            payload: 'reminder_${reminder.id}_tomorrow',
-            recurring: true,
-          );
-        }
+      for (int i = 0; i < occurrences; i++) {
+        final currentDue = i == 0 ? dueDate : _addMonthsSafe(dueDate, i);
+        final currentBefore = currentDue.subtract(const Duration(days: 1));
+        
+        final currentDueAt = _atReminderTime(currentDue);
+        final currentBeforeAt = _atReminderTime(currentBefore);
 
-        // Optional catch-up: if due is today and time passed, fire a one-shot soon
-        if (DateTime(now.year, now.month, now.day) == dueDate &&
-            dueAt.isBefore(now)) {
+        final idBase = reminder.id! * 10 + (i * 2);
+
+        // Tomorrow notification
+        if (currentBeforeAt.isAfter(now)) {
           await _schedule(
-            id:
-                reminder.id! * 10 +
-                1, // same id replaces any previous pending instance
-            title: 'Bill Due Today',
-            body:
-                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
-            scheduled: now.add(const Duration(minutes: 1)),
-            payload: 'reminder_${reminder.id}_today',
-          );
-        }
-      } else {
-        // One-time reminders: only schedule future notifications
-        if (beforeAt.isAfter(now)) {
-          await _schedule(
-            id: reminder.id! * 10,
+            id: idBase,
             title: 'Bill Due Tomorrow',
-            body:
-                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
-            scheduled: beforeAt,
+            body: '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due tomorrow',
+            scheduled: currentBeforeAt,
             payload: 'reminder_${reminder.id}_tomorrow',
           );
         }
-        if (dueAt.isAfter(now)) {
+
+        // Today notification
+        if (currentDueAt.isAfter(now)) {
           await _schedule(
-            id: reminder.id! * 10 + 1,
+            id: idBase + 1,
             title: 'Bill Due Today',
-            body:
-                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
-            scheduled: dueAt,
+            body: '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
+            scheduled: currentDueAt,
             payload: 'reminder_${reminder.id}_today',
           );
-        } else if (DateTime(now.year, now.month, now.day) == dueDate) {
-          // catch-up: schedule in a minute if due is today and time already passed
+        } else if (i == 0 && DateTime(now.year, now.month, now.day) == currentDue) {
+          // catch-up for the current month only if time passed
           await _schedule(
-            id: reminder.id! * 10 + 1,
+            id: idBase + 1,
             title: 'Bill Due Today',
-            body:
-                '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
+            body: '${reminder.title} (₹${reminder.amount.toStringAsFixed(2)}) is due today!',
             scheduled: now.add(const Duration(minutes: 1)),
             payload: 'reminder_${reminder.id}_today',
           );
@@ -294,7 +263,6 @@ class ReminderNotificationService {
     required String body,
     required DateTime scheduled,
     String? payload,
-    bool recurring = false,
   }) async {
     final android = AndroidNotificationDetails(
       'bill_reminders',
@@ -332,8 +300,7 @@ class ReminderNotificationService {
       NotificationDetails(android: android, iOS: ios),
       payload: payload,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents:
-          recurring ? DateTimeComponents.dayOfMonthAndTime : null,
+      matchDateTimeComponents: null,
     );
   }
 
@@ -342,8 +309,9 @@ class ReminderNotificationService {
     int id, {
     BuildContext? context,
   }) async {
-    await _notificationsPlugin.cancel(id * 10);
-    await _notificationsPlugin.cancel(id * 10 + 1);
+    for (int i = 0; i < 6; i++) {
+      await _notificationsPlugin.cancel(id * 10 + i);
+    }
 
     if (context != null) showSnack('Existing notifications cleared', context);
   }

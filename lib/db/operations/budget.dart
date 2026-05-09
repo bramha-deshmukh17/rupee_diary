@@ -43,6 +43,45 @@ class BudgetDao {
     });
   }
 
+  Future<int> copyPreviousBudget(int currentYear, int currentMonth) async {
+    // Find the most recent year/month that has budgets and is before the current year/month
+    final rows = await database.rawQuery('''
+      SELECT year, month FROM budget 
+      WHERE year < ? OR (year = ? AND month < ?)
+      ORDER BY year DESC, month DESC LIMIT 1
+    ''', [currentYear, currentYear, currentMonth]);
+
+    if (rows.isEmpty) {
+      return 0; // No previous budget found
+    }
+
+    final prevYear = rows.first['year'] as int;
+    final prevMonth = rows.first['month'] as int;
+
+    // Fetch the previous budget items
+    final prevBudgets = await database.rawQuery('''
+      SELECT categoryId, amount FROM budget
+      WHERE year = ? AND month = ?
+    ''', [prevYear, prevMonth]);
+
+    int insertedCount = 0;
+    // Insert them for the current month
+    for (final b in prevBudgets) {
+      try {
+        await database.insert('budget', {
+          'categoryId': b['categoryId'],
+          'year': currentYear,
+          'month': currentMonth,
+          'amount': b['amount'],
+        });
+        insertedCount++;
+      } catch (e) {
+        // Ignore duplicate key constraints if the category budget already exists for this month
+      }
+    }
+    return insertedCount;
+  }
+
   Future<bool> updateBudget(int id, double amount) async {
     return await database.update(
               'budget',

@@ -40,9 +40,10 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async => db.execute('pragma foreign_keys = on'),
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
 
     settingDao = SettingDao(db);
@@ -67,6 +68,51 @@ class DatabaseHelper {
 
     await db.execute(TransactionsDao.createTable);
     await db.execute(BillReminderDao.createTable);
+  }
+
+  // Iterative database upgrade: applies all migrations from old version to new version
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Apply migrations sequentially: if user jumps from v1 to v3, all intermediate migrations run
+    for (int v = oldVersion + 1; v <= newVersion; v++) {
+      switch (v) {
+        case 2:
+          await _migrateToV2(db);
+          break;
+        case 3:
+          // await _migrateToV3(db);
+          break;
+        case 4:
+          // await _migrateToV4(db);
+          break;
+        // Add future migrations here
+      }
+    }
+  }
+
+  // Migration v1 -> v2: Add Transfer category
+  Future<void> _migrateToV2(Database db) async {
+    try {
+      // Check if Transfer category already exists
+      final result = await db.query(
+        'categories',
+        where: 'name = ?',
+        whereArgs: ['Transfer'],
+        limit: 1,
+      );
+
+      // Only insert if it doesn't exist
+      if (result.isEmpty) {
+        await db.insert('categories', {
+          'name': 'Transfer',
+          'icon_code_point': 62184,
+          'icon_font_family': 'FontAwesomeSolid',
+          'icon_font_package': 'font_awesome_flutter',
+        });
+      }
+    } catch (e) {
+      // Safe to ignore if category already exists due to unique constraint
+      debugPrint('Migration v2: Transfer category insert - $e');
+    }
   }
 
   Future<void> _reopenDatabase() async {

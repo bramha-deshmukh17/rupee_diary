@@ -191,7 +191,7 @@ class TransactionsDao {
       incomeResult = await txn.rawQuery('''
         select coalesce(sum(amount), 0) as totalIncome
         from transactions
-        where type = 'income'
+        where type = 'income' and categoryId!=24
           and date(date) >= date('now', 'start of month', 'localtime')
           and date(date) <= date('now', 'localtime')
       ''');
@@ -199,7 +199,7 @@ class TransactionsDao {
       expenseResult = await txn.rawQuery('''
         select coalesce(sum(amount), 0) as totalExpense
         from transactions
-        where type = 'expense'
+        where type = 'expense' and categoryId!=24
           and date(date) >= date('now', 'start of month', 'localtime')
           and date(date) <= date('now', 'localtime')
       ''');
@@ -251,7 +251,7 @@ class TransactionsDao {
       order by datetime(t.date) desc
       limit ?
       ''',
-      [5],
+      [10],
     );
     return rows.map((e) => TransactionModel.fromMap(e)).toList();
   }

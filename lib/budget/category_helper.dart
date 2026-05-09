@@ -18,6 +18,21 @@ class CategoryBudgetSection extends StatelessWidget {
     required this.onReload,
   });
 
+  void _copyPreviousBudget(BuildContext context) async {
+    final count = await DatabaseHelper.instance.budgetDao.copyPreviousBudget(
+      DateTime.now().year,
+      DateTime.now().month,
+    );
+    if (!context.mounted) return;
+    
+    if (count > 0) {
+      showSnack("Copied $count budgets from previous months!", context);
+      onReload();
+    } else {
+      showSnack("No previous budget found to copy", context, error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -25,10 +40,25 @@ class CategoryBudgetSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Category Budgets", style: textTheme.headlineMedium),
-        Text(
-          "Long Press to delete budget",
-          style: textTheme.bodySmall?.copyWith(color: kGrey),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Category Budgets", style: textTheme.headlineMedium),
+                Text(
+                  "Long Press to delete budget",
+                  style: textTheme.bodySmall?.copyWith(color: kGrey),
+                ),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(FontAwesomeIcons.copy, size: 20.0),
+              tooltip: 'Copy previous budget',
+              onPressed: () => _copyPreviousBudget(context),
+            ),
+          ],
         ),
         khBox,
         if (budgets.isEmpty || budgets.length == 1)
