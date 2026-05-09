@@ -93,6 +93,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
+  bool get isNoFilterApplied {
+    if (_filter == null) return true;
+    return _filter!.type == null &&
+        _filter!.categoryId == null &&
+        _filter!.from == null &&
+        _filter!.to == null &&
+        _filter!.minAmount == null &&
+        _filter!.maxAmount == null &&
+        _filter!.bankId == null;
+  }
+
+  Future<void> _deleteLastTransaction() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Theme.of(context).cardTheme.color,
+          title: Text('Delete Transaction?'),
+          content: Text('Are you sure you want to delete the last transaction?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel', style: TextStyle(color: kGrey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Delete', style: TextStyle(color: kRed)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await DatabaseHelper.instance.transactionsDao.deleteLastTransaction();
+      if (!mounted) return;
+      showSnack('Last transaction deleted', context);
+      setState(() {
+        page = 0;
+        _transactions.clear();
+        _hasMoreData = true;
+      });
+      _loadPageWithFilters();
+    }
+  }
+
   // Helper to pair transfer transactions (sender and receiver)
   List<dynamic> _groupTransactionsWithPairs(
     List<TransactionModel> transactions,
@@ -183,14 +229,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       final item =
                           _groupTransactionsWithPairs(_transactions)[index];
 
+                      final isSettlement = item is TransactionModel && item.category?.toLowerCase() == 'settlement';
+                      final isLastTransaction = index == 0 && page == 0 && isNoFilterApplied && !isSettlement;
+                      final onDoubleTap = isLastTransaction ? () => _deleteLastTransaction() : null;
+
                       if (item is TransferPair) {
                         return TransferTile(
                           senderTransaction: item.sender,
                           receiverTransaction: item.receiver,
+                          onDoubleTap: onDoubleTap,
                         );
                       } else if (item is TransactionModel) {
                         return TransactionTile(
                           transaction: item,
+                          onDoubleTap: onDoubleTap,
                           onMarkedReturned: () {
                             setState(() {
                               page = 0;

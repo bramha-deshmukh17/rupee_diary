@@ -442,4 +442,61 @@ class TransactionsDao {
 
     return rows.map((e) => TransactionModel.fromMap(e)).toList();
   }
+
+  // delete the last transaction (and its pair if it was a transfer)
+  Future<void> deleteLastTransaction() async {
+    await database.transaction((txn) async {
+      // Get the absolute last transaction
+      final rows = await txn.query('transactions', orderBy: 'id DESC', limit: 1);
+      if (rows.isEmpty) return;
+      
+      final lastTxn = rows.first;
+      final int lastId = lastTxn['id'] as int;
+
+      Future<void> revertAndDelete(Map<String, Object?> t, bool isReceiverTransfer) async {
+        final int bankId = t['bankId'] as int;
+        final double amount = (t['amount'] as num).toDouble();
+        final String type = t['type'] as String;
+        final int id = t['id'] as int;
+
+        final bankRows = await txn.query('bank', columns: ['balance'], where: 'id = ?', whereArgs: [bankId], limit: 1);
+        if (bankRows.isNotEmpty) {
+          final currentBalance = (bankRows.first['balance'] as num).toDouble();
+          
+          double delta = 0;
+          if (type == 'income' || type == 'borrow') {
+            delta = -amount; // was added, so subtract
+          } else if (type == 'expense' || type == 'lend') {
+            delta = amount; // was subtracted, so add
+          } else if (type == 'transfer') {
+            if (isReceiverTransfer) {
+              delta = -amount; // receiver got money, so subtract
+            } else {
+              delta = amount; // sender sent money, so add
+            }
+          }
+          
+          await txn.rawUpdate('update bank set balance = ? where id = ?', [currentBalance + delta, bankId]);
+        }
+        await txn.delete('transactions', where: 'id = ?', whereArgs: [id]);
+      }
+
+      if (lastTxn['type'] == 'transfer') {
+        // Since it's the last transaction and a transfer, it MUST be the receiver part
+        await revertAndDelete(lastTxn, true);
+
+        // The sender part is the previous one (id - 1)
+        final prevRows = await txn.query('transactions', where: 'id = ?', whereArgs: [lastId - 1]);
+        if (prevRows.isNotEmpty) {
+          final prevTxn = prevRows.first;
+          if (prevTxn['type'] == 'transfer') {
+            await revertAndDelete(prevTxn, false);
+          }
+        }
+      } else {
+        // Not a transfer
+        await revertAndDelete(lastTxn, false);
+      }
+    });
+  }
 }

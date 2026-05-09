@@ -19,11 +19,13 @@ class TransferPair {
 class TransferTile extends StatelessWidget {
   final TransactionModel senderTransaction;
   final TransactionModel receiverTransaction;
+  final VoidCallback? onDoubleTap;
 
   const TransferTile({
     super.key,
     required this.senderTransaction,
     required this.receiverTransaction,
+    this.onDoubleTap,
   });
 
   @override
@@ -32,9 +34,11 @@ class TransferTile extends StatelessWidget {
     final amount = senderTransaction.amount;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
+      child: GestureDetector(
+        onDoubleTap: onDoubleTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header with transfer icon and date
@@ -144,6 +148,7 @@ class TransferTile extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 }
@@ -152,11 +157,13 @@ class TransferTile extends StatelessWidget {
 class TransactionTile extends StatelessWidget {
   final TransactionModel transaction;
   final VoidCallback? onMarkedReturned;
+  final VoidCallback? onDoubleTap;
 
   const TransactionTile({
     super.key,
     required this.transaction,
     this.onMarkedReturned,
+    this.onDoubleTap,
   });
 
   @override
@@ -187,15 +194,19 @@ class TransactionTile extends StatelessWidget {
             : FontAwesomeIcons.question;
 
     return Card(
-      child: ListTile(
-        onTap: showMyDialog('Note', transaction.notes, textTheme, context),
-        onLongPress:
-            (type == 'lend' || type == 'borrow')
-                ? _markAsReturnedDialog(textTheme: textTheme, context: context)
-                : null,
-        contentPadding: const EdgeInsets.all(10.0),
+      child: GestureDetector(
+        onDoubleTap: onDoubleTap,
+        child: ListTile(
+          onTap: showMyDialog('Note', transaction.notes, textTheme, context),
+          onLongPress:
+              (type == 'lend' || type == 'borrow')
+                  ? _markAsReturnedDialog(textTheme: textTheme, context: context)
+                  : (type == 'expense')
+                      ? _updateNotesDialog(textTheme: textTheme, context: context)
+                      : null,
+          contentPadding: const EdgeInsets.all(10.0),
 
-        leading: GestureDetector(
+          leading: GestureDetector(
           onTap: showMyDialog(
             'Category',
             transaction.category,
@@ -268,6 +279,7 @@ class TransactionTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -499,6 +511,63 @@ class TransactionTile extends StatelessWidget {
         transaction.id,
       ],
     );
+  }
+
+  // Dialog to update notes for expense transactions
+  GestureLongPressCallback _updateNotesDialog({
+    required TextTheme textTheme,
+    required BuildContext context,
+  }) {
+    return () async {
+      final ctrl = TextEditingController(text: transaction.notes);
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: Theme.of(context).cardTheme.color,
+            title: Text('Update Notes', style: textTheme.bodyLarge),
+            content: TextField(
+              controller: ctrl,
+              maxLines: 3,
+              autofocus: true,
+              decoration: kBaseInputDecoration.copyWith(hintText: 'Enter notes...'),
+              style: textTheme.bodyMedium,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel', style: textTheme.bodyLarge),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final newNotes = ctrl.text.trim();
+                  try {
+                    await DatabaseHelper.instance.transactionsDao.database.update(
+                      'transactions',
+                      {'notes': newNotes.isEmpty ? null : newNotes},
+                      where: 'id = ?',
+                      whereArgs: [transaction.id],
+                    );
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                    showSnack('Notes updated', context);
+                    onMarkedReturned?.call();
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                    showSnack('Failed to update notes', context, error: true);
+                  }
+                },
+                child: Text(
+                  'Update',
+                  style: textTheme.bodyLarge?.copyWith(color: kPrimaryColor),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    };
   }
 
   // check if transaction is already marked as returned
