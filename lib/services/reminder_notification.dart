@@ -193,10 +193,6 @@ class ReminderNotificationService {
       reminder.dueDate.month,
       reminder.dueDate.day,
     );
-    final dayBefore = dueDate.subtract(const Duration(days: 1));
-
-    final dueAt = _atReminderTime(dueDate);
-    final beforeAt = _atReminderTime(dayBefore);
 
     try {
       int occurrences = (reminder.isRecurring ?? false) ? 3 : 1;

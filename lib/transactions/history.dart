@@ -105,21 +105,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _deleteLastTransaction() async {
+    final textStyle = Theme.of(context).textTheme;
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: Theme.of(context).cardTheme.color,
-          title: Text('Delete Transaction?'),
-          content: Text('Are you sure you want to delete the last transaction?'),
+          title: Text('Delete Transaction?', style: textStyle.bodyLarge),
+          content: Text('Are you sure you want to delete the last transaction?', style: textStyle.bodyMedium,),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancel', style: TextStyle(color: kGrey)),
+              child: Text('Cancel', style: textStyle.bodySmall?.copyWith(color: kGrey)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text('Delete', style: TextStyle(color: kRed)),
+              child: Text('Delete', style: textStyle.bodySmall?.copyWith(color: kRed)),
             ),
           ],
         );
@@ -524,7 +525,7 @@ class _FilterSheetState extends State<FilterSheet> {
                       backgroundColor: Theme.of(context).cardTheme.color,
                       label: Text(
                         t,
-                        style: TextStyle(
+                        style: textTheme.bodyLarge?.copyWith(
                           color: isSelected ? Colors.white : null,
                         ),
                       ),

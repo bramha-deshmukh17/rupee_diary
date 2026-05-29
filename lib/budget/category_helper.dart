@@ -48,7 +48,7 @@ class CategoryBudgetSection extends StatelessWidget {
               children: [
                 Text("Category Budgets", style: textTheme.headlineMedium),
                 Text(
-                  "Long Press to delete budget",
+                  "Press copy to copy budgets from last month",
                   style: textTheme.bodySmall?.copyWith(color: kGrey),
                 ),
               ],

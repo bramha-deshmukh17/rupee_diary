@@ -63,7 +63,7 @@ class _BankScreenState extends State<BankScreen> {
     return Scaffold(
       appBar: Appbar(title: 'Banks'),
       body: Padding(
-       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 1),
         child:
             _loading
                 ? const Center(
@@ -198,14 +198,13 @@ class _BankScreenState extends State<BankScreen> {
         canDelete = false;
       } else if (b.isDefault == true && !hasTx) {
         // Scenario 2: default + no transactions
-        message =
-            "This is the default bank. Change the default to another bank before deleting.";
-        canDelete = false;
+        message = "Are you sure you want to delete the bank '${b.name}'?";
+        canDelete = true;
       } else if (b.isDefault != true && hasTx) {
         // Scenario 3: not default + transactions
         message =
-            "'${b.name}' bank has transactions. Deleting it will also delete all its transactions. Continue?";
-        canDelete = true;
+            "'${b.name}' bank has transactions. Unable to delete. Please delete associated transactions first.";
+        canDelete = false;
       } else {
         // Scenario 4: not default + no transactions
         message = "Are you sure you want to delete the bank '${b.name}'?";
@@ -363,7 +362,7 @@ class _AddBankState extends State<AddBank> {
     final textTheme = Theme.of(context).textTheme;
 
     return AlertDialog(
-      title: Text("Enter Bank Details", style: textTheme.bodyLarge,),
+      title: Text("Enter Bank Details", style: textTheme.bodyLarge),
       backgroundColor: Theme.of(context).cardTheme.color,
       shadowColor: Theme.of(context).cardTheme.shadowColor,
       content: SizedBox(

@@ -18,7 +18,7 @@ class HowToUseScreen extends StatelessWidget {
         children: [
           // 1. Banks
           Text(
-            '1. Add a bank account',
+            '1. Bank account',
             style: t.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           _BulletItem(
@@ -37,7 +37,7 @@ class HowToUseScreen extends StatelessWidget {
 
           // 2. Transactions
           Text(
-            '2. Record transactions',
+            '2. Transaction and history',
             style: t.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           _BulletItem(
@@ -50,17 +50,27 @@ class HowToUseScreen extends StatelessWidget {
           ),
           _BulletItem(
             text:
-                'Lend / Borrow entries can be marked as returned from the Transactions screen by long-pressing them.',
+                'Lend / Borrow entries can be marked as returned from the Transactions history screen by long-pressing them.',
           ),
           _BulletItem(
             text:
                 'When marked as returned, the app automatically creates a settlement transaction.',
           ),
           khBox,
+           _BulletItem(
+            text:
+                'Tap on tracsaction card to see transaction message/category for expense.',
+          ),
+          khBox,
+           _BulletItem(
+            text:
+                'Double tap on transaction card to delete it(Only most recent transactiono can be deleted).',
+          ),
+          khBox,
 
           // 3. Budgets
           Text(
-            '3. Track budgets',
+            '3. Budgets',
             style: t.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           _BulletItem(
@@ -90,7 +100,7 @@ class HowToUseScreen extends StatelessWidget {
 
           // 4. Bill reminders
           Text(
-            '4. Set bill reminders',
+            '4. Bill reminders',
             style: t.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           _BulletItem(
@@ -112,7 +122,7 @@ class HowToUseScreen extends StatelessWidget {
 
           // 5. Statistics
           Text(
-            '5. View statistics',
+            '5. Statistics',
             style: t.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           _BulletItem(text: 'Open the Statistics tab from the bottom bar.'),
